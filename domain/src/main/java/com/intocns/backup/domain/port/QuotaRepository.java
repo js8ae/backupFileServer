@@ -7,6 +7,8 @@ import java.util.Optional;
 
 public interface QuotaRepository {
     Optional<HospitalQuota> findByHospitalId(HospitalId hospitalId);
+    void initializeQuota(HospitalId hospitalId, long limitBytes);
+    void updateLimit(HospitalId hospitalId, long limitBytes);
     void addUsage(HospitalId hospitalId, long bytes);
     void subtractUsage(HospitalId hospitalId, long bytes);
 }

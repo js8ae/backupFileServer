@@ -1,6 +1,7 @@
 package com.intocns.backup.api.error;
 
 import com.intocns.backup.domain.exception.CredentialNotFoundException;
+import com.intocns.backup.domain.exception.HospitalAlreadyExistsException;
 import com.intocns.backup.domain.exception.HospitalNotFoundException;
 import com.intocns.backup.domain.exception.IntegrityCheckFailedException;
 import com.intocns.backup.domain.exception.LicenseExpiredException;
@@ -21,6 +22,12 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(HospitalAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleHospitalAlreadyExists(HospitalAlreadyExistsException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of("HOSPITAL_ALREADY_EXISTS", e.getMessage()));
+    }
 
     @ExceptionHandler(HospitalNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleHospitalNotFound(HospitalNotFoundException e) {

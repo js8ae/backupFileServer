@@ -30,6 +30,31 @@ public class JdbcQuotaRepository implements QuotaRepository {
     }
 
     @Override
+    public void initializeQuota(HospitalId hospitalId, long limitBytes) {
+        jdbc.sql("""
+                INSERT INTO hospital_quota (cocode, used_bytes, limit_bytes, last_calculated_at)
+                VALUES (:cocode, 0, :limitBytes, :now)
+                """)
+                .param("cocode", hospitalId.cocode())
+                .param("limitBytes", limitBytes)
+                .param("now", Timestamp.from(Instant.now()))
+                .update();
+    }
+
+    @Override
+    public void updateLimit(HospitalId hospitalId, long limitBytes) {
+        jdbc.sql("""
+                UPDATE hospital_quota
+                SET limit_bytes = :limitBytes, last_calculated_at = :now
+                WHERE cocode = :cocode
+                """)
+                .param("limitBytes", limitBytes)
+                .param("now", Timestamp.from(Instant.now()))
+                .param("cocode", hospitalId.cocode())
+                .update();
+    }
+
+    @Override
     public void addUsage(HospitalId hospitalId, long bytes) {
         jdbc.sql("""
                 INSERT INTO hospital_quota (cocode, used_bytes, limit_bytes, last_calculated_at)

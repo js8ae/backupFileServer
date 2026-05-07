@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Optional;
 import java.util.TimeZone;
 
@@ -30,6 +31,13 @@ public class JdbcHospitalRepository implements HospitalRepository {
                 .param("cocode", id.cocode())
                 .query(this::mapRow)
                 .optional();
+    }
+
+    @Override
+    public List<Hospital> findAll() {
+        return jdbc.sql("SELECT * FROM hospital ORDER BY cocode")
+                .query(this::mapRow)
+                .list();
     }
 
     @Override
