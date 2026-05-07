@@ -1,7 +1,10 @@
 package com.intocns.backup.application;
 
+import com.intocns.backup.domain.exception.LicenseExpiredException;
 import com.intocns.backup.domain.exception.QuotaExceededException;
+import com.intocns.backup.domain.exception.SessionNotFoundException;
 import com.intocns.backup.domain.model.*;
+import com.intocns.backup.domain.port.HospitalRepository;
 import com.intocns.backup.domain.port.QuotaRepository;
 import com.intocns.backup.domain.port.UploadSessionRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,14 +19,17 @@ import java.util.UUID;
 @Transactional
 public class InitiateUploadUseCase {
 
+    private final HospitalRepository hospitalRepository;
     private final UploadSessionRepository sessionRepository;
     private final QuotaRepository quotaRepository;
     private final long sessionTtlHours;
 
     public InitiateUploadUseCase(
+            HospitalRepository hospitalRepository,
             UploadSessionRepository sessionRepository,
             QuotaRepository quotaRepository,
             @Value("${backup.session.ttl-hours:24}") long sessionTtlHours) {
+        this.hospitalRepository = hospitalRepository;
         this.sessionRepository = sessionRepository;
         this.quotaRepository = quotaRepository;
         this.sessionTtlHours = sessionTtlHours;
@@ -38,6 +44,15 @@ public class InitiateUploadUseCase {
     ) {}
 
     public UUID initiate(Command command) {
+        Instant now = Instant.now();
+
+        Hospital hospital = hospitalRepository.findById(command.hospitalId())
+                .orElseThrow(() -> new SessionNotFoundException(null)); // 미등록 병원
+
+        if (!hospital.isLicenseValid(now)) {
+            throw new LicenseExpiredException(command.hospitalId());
+        }
+
         quotaRepository.findByHospitalId(command.hospitalId()).ifPresent(quota -> {
             if (!quota.canAccommodate(command.totalSize())) {
                 throw new QuotaExceededException(command.hospitalId(), quota.usedBytes(), quota.limitBytes());
@@ -54,8 +69,8 @@ public class InitiateUploadUseCase {
             command.expectedSha256(),
             null,
             UploadStatus.INITIATED,
-            Instant.now().plus(sessionTtlHours, ChronoUnit.HOURS),
-            Instant.now()
+            now.plus(sessionTtlHours, ChronoUnit.HOURS),
+            now
         );
         sessionRepository.save(session);
         return session.id();

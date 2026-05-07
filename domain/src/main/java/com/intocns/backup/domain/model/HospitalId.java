@@ -1,9 +1,9 @@
 package com.intocns.backup.domain.model;
 
-public record HospitalId(String value) {
+public record HospitalId(long cocode) {
     public HospitalId {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("HospitalId must not be blank");
+        if (cocode <= 0) {
+            throw new IllegalArgumentException("HospitalId cocode must be positive: " + cocode);
         }
     }
 }
