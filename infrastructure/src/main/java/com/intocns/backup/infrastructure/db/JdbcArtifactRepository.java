@@ -58,6 +58,13 @@ public class JdbcArtifactRepository implements ArtifactRepository {
     }
 
     @Override
+    public List<BackupArtifact> findAllActive() {
+        return jdbc.sql("SELECT * FROM backup_artifact WHERE purged_at IS NULL")
+                .query(this::mapRow)
+                .list();
+    }
+
+    @Override
     public List<BackupArtifact> findExpiredNotPurgedBefore(Instant threshold) {
         return jdbc.sql("""
                 SELECT * FROM backup_artifact
