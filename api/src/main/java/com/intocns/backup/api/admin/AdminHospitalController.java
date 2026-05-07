@@ -1,17 +1,19 @@
 package com.intocns.backup.api.admin;
 
-import com.intocns.backup.api.admin.dto.HospitalResponse;
-import com.intocns.backup.api.admin.dto.RegisterHospitalRequest;
-import com.intocns.backup.api.admin.dto.UpdateHospitalRequest;
+import com.intocns.backup.api.admin.dto.*;
 import com.intocns.backup.application.RegisterHospitalUseCase;
 import com.intocns.backup.application.UpdateHospitalUseCase;
+import com.intocns.backup.domain.exception.HospitalNotFoundException;
 import com.intocns.backup.domain.model.Hospital;
 import com.intocns.backup.domain.model.HospitalId;
+import com.intocns.backup.domain.port.ArtifactRepository;
 import com.intocns.backup.domain.port.HospitalRepository;
-import com.intocns.backup.domain.exception.HospitalNotFoundException;
+import com.intocns.backup.domain.port.QuotaRepository;
+import com.intocns.backup.domain.port.UploadSessionRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -22,13 +24,22 @@ public class AdminHospitalController {
     private final RegisterHospitalUseCase registerHospital;
     private final UpdateHospitalUseCase updateHospital;
     private final HospitalRepository hospitalRepository;
+    private final QuotaRepository quotaRepository;
+    private final UploadSessionRepository sessionRepository;
+    private final ArtifactRepository artifactRepository;
 
     public AdminHospitalController(RegisterHospitalUseCase registerHospital,
                                    UpdateHospitalUseCase updateHospital,
-                                   HospitalRepository hospitalRepository) {
+                                   HospitalRepository hospitalRepository,
+                                   QuotaRepository quotaRepository,
+                                   UploadSessionRepository sessionRepository,
+                                   ArtifactRepository artifactRepository) {
         this.registerHospital = registerHospital;
         this.updateHospital = updateHospital;
         this.hospitalRepository = hospitalRepository;
+        this.quotaRepository = quotaRepository;
+        this.sessionRepository = sessionRepository;
+        this.artifactRepository = artifactRepository;
     }
 
     @PostMapping
@@ -72,5 +83,30 @@ public class AdminHospitalController {
                 )
         );
         return HospitalResponse.from(hospital);
+    }
+
+    @GetMapping("/{cocode}/quota")
+    public QuotaResponse quota(@PathVariable long cocode) {
+        return quotaRepository.findByHospitalId(new HospitalId(cocode))
+                .map(QuotaResponse::from)
+                .orElseThrow(() -> new ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Quota not found for cocode=" + cocode));
+    }
+
+    @GetMapping("/{cocode}/sessions")
+    public List<SessionSummary> sessions(
+            @PathVariable long cocode,
+            @RequestParam(required = false) String status) {
+        return sessionRepository.findByHospitalId(new HospitalId(cocode)).stream()
+                .filter(s -> status == null || s.status().name().equalsIgnoreCase(status))
+                .map(SessionSummary::from)
+                .toList();
+    }
+
+    @GetMapping("/{cocode}/artifacts")
+    public List<ArtifactSummary> artifacts(@PathVariable long cocode) {
+        return artifactRepository.findByHospitalId(new HospitalId(cocode)).stream()
+                .map(ArtifactSummary::from)
+                .toList();
     }
 }

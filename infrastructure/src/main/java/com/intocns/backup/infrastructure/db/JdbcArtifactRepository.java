@@ -65,6 +65,18 @@ public class JdbcArtifactRepository implements ArtifactRepository {
     }
 
     @Override
+    public List<BackupArtifact> findByHospitalId(HospitalId hospitalId) {
+        return jdbc.sql("""
+                SELECT * FROM backup_artifact
+                WHERE cocode = :cocode
+                ORDER BY created_at DESC
+                """)
+                .param("cocode", hospitalId.cocode())
+                .query(this::mapRow)
+                .list();
+    }
+
+    @Override
     public List<BackupArtifact> findExpiredNotPurgedBefore(Instant threshold) {
         return jdbc.sql("""
                 SELECT * FROM backup_artifact

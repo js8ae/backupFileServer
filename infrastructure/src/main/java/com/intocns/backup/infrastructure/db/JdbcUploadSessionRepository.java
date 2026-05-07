@@ -99,6 +99,18 @@ public class JdbcUploadSessionRepository implements UploadSessionRepository {
     }
 
     @Override
+    public List<UploadSession> findByHospitalId(HospitalId hospitalId) {
+        return jdbc.sql("""
+                SELECT * FROM upload_session
+                WHERE cocode = :cocode
+                ORDER BY created_at DESC
+                """)
+                .param("cocode", hospitalId.cocode())
+                .query(this::mapRow)
+                .list();
+    }
+
+    @Override
     public List<UploadSession> findExpiredBefore(Instant threshold) {
         return jdbc.sql("""
                 SELECT * FROM upload_session

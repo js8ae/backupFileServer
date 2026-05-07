@@ -1,5 +1,6 @@
 package com.intocns.backup.domain.port;
 
+import com.intocns.backup.domain.model.HospitalId;
 import com.intocns.backup.domain.model.UploadSession;
 import com.intocns.backup.domain.model.UploadStatus;
 
@@ -15,5 +16,6 @@ public interface UploadSessionRepository {
     void updateTusUploadUri(UUID id, String tusUploadUri);
     void updateOffset(UUID id, long offset);
     void updateStatus(UUID id, UploadStatus status);
+    List<UploadSession> findByHospitalId(HospitalId hospitalId);
     List<UploadSession> findExpiredBefore(Instant threshold);
 }

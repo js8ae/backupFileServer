@@ -37,6 +37,15 @@ public class AbortUploadUseCase {
         doAbort(session, requestingHospital);
     }
 
+    public void forceAbort(UUID sessionId) throws IOException {
+        UploadSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+        if (session.tusUploadUri() != null) {
+            protocol.deleteUpload(session.tusUploadUri());
+        }
+        sessionRepository.updateStatus(session.id(), UploadStatus.ABORTED);
+    }
+
     private void doAbort(UploadSession session, HospitalId requestingHospital) throws IOException {
         if (!session.hospitalId().equals(requestingHospital)) {
             throw new UnauthorizedSessionAccessException(session.id(), requestingHospital);
