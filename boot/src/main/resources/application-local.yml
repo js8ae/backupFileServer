@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:mariadb://211.169.234.36:3306/cloud_file_manage
+    username: filemanager
+    password: MTreFile$lACt@nd16475g3!$2X
+    hikari:
+      maximum-pool-size: 10
+
+backup:
+  storage:
+    incoming-root: ${HOME}/backup-local/incoming
+    artifacts-root: ${HOME}/backup-local/artifacts
+    trash-root: ${HOME}/backup-local/trash
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+logging:
+  level:
+    me.desair.tus: DEBUG
+    com.intocns.backup: DEBUG

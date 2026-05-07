@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    # Testcontainers가 런타임에 오버라이드 — 실제 값은 @DynamicPropertySource로 주입
+    url: jdbc:mariadb://localhost:3306/backup_test
+    username: test
+    password: test
+    hikari:
+      maximum-pool-size: 5
+  flyway:
+    enabled: false   # Testcontainers에서 스키마 직접 관리
+
+backup:
+  storage:
+    incoming-root: ${java.io.tmpdir}/backup-test/incoming
+    artifacts-root: ${java.io.tmpdir}/backup-test/artifacts
+    trash-root: ${java.io.tmpdir}/backup-test/trash
+  session:
+    ttl-hours: 1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    me.desair.tus: WARN
+    com.intocns.backup: DEBUG

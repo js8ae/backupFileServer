@@ -1,0 +1,26 @@
+dependencies {
+    implementation project(':domain')
+    implementation project(':application')
+
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // MariaDB
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+
+    // TUS 프로토콜 어댑터 (infrastructure만 직접 사용)
+    implementation 'me.desair.tus:tus-java-server:1.0.0-3.0'
+
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // 메트릭
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    // 로깅
+    implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
+}

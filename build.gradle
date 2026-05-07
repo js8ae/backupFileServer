@@ -1,36 +1,36 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '4.0.6'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.springframework.boot' version '4.0.6' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
-group = 'com.intocns'
-version = '0.1.0'
-description = 'backupFileServer'
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+    group = 'com.intocns'
+    version = '0.1.0'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:4.0.6"
+        }
+    }
+
+    configurations.configureEach {
+        resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'net.logstash.logback') {
+                details.useVersion '8.0'
+            }
+        }
     }
 }
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-
-    // TUS 프로토콜 (1.0.0-3.0 = 최신, 2023-07-26 릴리스, jakarta.servlet 사용 확인)
-    implementation 'me.desair.tus:tus-java-server:1.0.0-3.0'
-
-    // 로깅
-    implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
-
-    // 테스트
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-}
-
-test { useJUnitPlatform() }

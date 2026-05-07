@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: backup-server
+  threads:
+    virtual:
+      enabled: true
+  flyway:
+    locations: classpath:db/migration
+    enabled: true
+
+server:
+  port: 8080
+  tomcat:
+    max-swallow-size: -1
+    max-http-form-post-size: -1
+  servlet:
+    multipart:
+      enabled: false
+
+backup:
+  tus:
+    max-upload-size: 53687091200   # 50GB
+  session:
+    ttl-hours: 24
+  retention:
+    db-days: 30
+    file-days: 90
+    trash-days: 7
