@@ -1,1 +1,5 @@
 // 외부 의존성 0 — 순수 Java 모델 + 포트 인터페이스
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
