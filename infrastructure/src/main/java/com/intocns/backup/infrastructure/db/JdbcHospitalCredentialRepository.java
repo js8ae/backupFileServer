@@ -1,14 +1,23 @@
 package com.intocns.backup.infrastructure.db;
 
+import com.intocns.backup.domain.model.CredentialInfo;
 import com.intocns.backup.domain.model.HospitalId;
+import com.intocns.backup.domain.port.HospitalCredentialRepository;
 import com.intocns.backup.infrastructure.security.HospitalCredential;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Calendar;
+import java.util.List;
 import java.util.Optional;
+import java.util.TimeZone;
 
 @Repository
-public class JdbcHospitalCredentialRepository {
+public class JdbcHospitalCredentialRepository implements HospitalCredentialRepository {
+
+    private static final Calendar UTC = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 
     private final JdbcClient jdbcClient;
 
@@ -32,5 +41,51 @@ public class JdbcHospitalCredentialRepository {
                         rs.getString("client_secret_hash")
                 ))
                 .optional();
+    }
+
+    @Override
+    public void save(HospitalId hospitalId, String clientId, String clientSecretHash, Instant createdAt) {
+        jdbcClient.sql("""
+                INSERT INTO hospital_credential (cocode, client_id, client_secret_hash, created_at)
+                VALUES (:cocode, :clientId, :clientSecretHash, :createdAt)
+                """)
+                .param("cocode", hospitalId.cocode())
+                .param("clientId", clientId)
+                .param("clientSecretHash", clientSecretHash)
+                .param("createdAt", Timestamp.from(createdAt))
+                .update();
+    }
+
+    @Override
+    public List<CredentialInfo> findAllActiveByHospitalId(HospitalId hospitalId) {
+        return jdbcClient.sql("""
+                SELECT client_id, created_at
+                FROM hospital_credential
+                WHERE cocode = :cocode
+                  AND revoked_at IS NULL
+                ORDER BY created_at DESC
+                """)
+                .param("cocode", hospitalId.cocode())
+                .query((rs, _) -> new CredentialInfo(
+                        rs.getString("client_id"),
+                        rs.getTimestamp("created_at", UTC).toInstant()
+                ))
+                .list();
+    }
+
+    @Override
+    public boolean revoke(HospitalId hospitalId, String clientId, Instant revokedAt) {
+        int updated = jdbcClient.sql("""
+                UPDATE hospital_credential
+                SET revoked_at = :revokedAt
+                WHERE cocode = :cocode
+                  AND client_id = :clientId
+                  AND revoked_at IS NULL
+                """)
+                .param("revokedAt", Timestamp.from(revokedAt))
+                .param("cocode", hospitalId.cocode())
+                .param("clientId", clientId)
+                .update();
+        return updated > 0;
     }
 }

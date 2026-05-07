@@ -1,5 +1,7 @@
 package com.intocns.backup.api.error;
 
+import com.intocns.backup.domain.exception.CredentialNotFoundException;
+import com.intocns.backup.domain.exception.HospitalNotFoundException;
 import com.intocns.backup.domain.exception.IntegrityCheckFailedException;
 import com.intocns.backup.domain.exception.LicenseExpiredException;
 import com.intocns.backup.domain.exception.QuotaExceededException;
@@ -19,6 +21,18 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(HospitalNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleHospitalNotFound(HospitalNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of("HOSPITAL_NOT_FOUND", e.getMessage()));
+    }
+
+    @ExceptionHandler(CredentialNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCredentialNotFound(CredentialNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of("CREDENTIAL_NOT_FOUND", e.getMessage()));
+    }
 
     @ExceptionHandler(SessionNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleSessionNotFound(SessionNotFoundException e) {

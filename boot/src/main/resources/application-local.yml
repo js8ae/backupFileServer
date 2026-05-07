@@ -13,6 +13,7 @@ backup:
     trash-root: ${HOME}/backup-local/trash
   auth:
     jwt-secret: local-dev-secret-must-be-at-least-32-chars!!
+    key: local-admin-key
 
 management:
   endpoints:

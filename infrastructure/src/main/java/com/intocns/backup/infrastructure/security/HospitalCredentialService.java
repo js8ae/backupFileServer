@@ -2,6 +2,7 @@ package com.intocns.backup.infrastructure.security;
 
 import com.intocns.backup.domain.model.HospitalId;
 import com.intocns.backup.domain.port.CredentialAuthenticator;
+import com.intocns.backup.domain.port.PasswordHasher;
 import com.intocns.backup.infrastructure.db.JdbcHospitalCredentialRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.Optional;
 
 @Component
-public class HospitalCredentialService implements CredentialAuthenticator {
+public class HospitalCredentialService implements CredentialAuthenticator, PasswordHasher {
 
     private final JdbcHospitalCredentialRepository credentialRepository;
     private final BCryptPasswordEncoder encoder;
@@ -24,5 +25,10 @@ public class HospitalCredentialService implements CredentialAuthenticator {
         return credentialRepository.findActiveByClientId(clientId)
                 .filter(cred -> encoder.matches(clientSecret, cred.clientSecretHash()))
                 .map(HospitalCredential::hospitalId);
+    }
+
+    @Override
+    public String hash(String raw) {
+        return encoder.encode(raw);
     }
 }

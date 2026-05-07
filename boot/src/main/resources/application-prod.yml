@@ -13,6 +13,7 @@ backup:
     trash-root: ${BACKUP_TRASH_ROOT}
   auth:
     jwt-secret: ${BACKUP_JWT_SECRET}
+    key: ${BACKUP_ADMIN_KEY}
 
 management:
   endpoints:

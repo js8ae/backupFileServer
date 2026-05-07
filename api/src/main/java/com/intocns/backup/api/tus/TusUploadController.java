@@ -57,7 +57,8 @@ public class TusUploadController {
             HttpServletResponse response) throws IOException {
 
         BackupType type = BackupType.valueOf(uploadType.toUpperCase());
-        UUID sessionId = initiateUpload.initiate(caller, type, filename, uploadLength, sha256);
+        UUID sessionId = initiateUpload.initiate(new InitiateUploadUseCase.Command(
+                caller, type, filename, uploadLength, sha256));
 
         protocol.process(new JakartaHttpRequestWrapper(request), new JakartaHttpResponseWrapper(response));
 
