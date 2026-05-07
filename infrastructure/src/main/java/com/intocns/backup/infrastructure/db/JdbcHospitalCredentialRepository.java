@@ -22,8 +22,8 @@ public class JdbcHospitalCredentialRepository {
                 FROM hospital_credential hc
                 JOIN hospital h ON h.cocode = hc.cocode
                 WHERE hc.client_id = :clientId
-                  AND hc.active = TRUE
-                  AND h.active = TRUE
+                  AND hc.revoked_at IS NULL
+                  AND h.is_active = TRUE
                 """)
                 .param("clientId", clientId)
                 .query((rs, _) -> new HospitalCredential(

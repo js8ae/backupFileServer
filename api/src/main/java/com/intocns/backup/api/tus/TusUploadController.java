@@ -5,7 +5,7 @@ import com.intocns.backup.application.HandlePatchUseCase;
 import com.intocns.backup.application.InitiateUploadUseCase;
 import com.intocns.backup.application.LinkTusUploadUseCase;
 import com.intocns.backup.domain.model.HospitalId;
-import com.intocns.backup.domain.model.UploadType;
+import com.intocns.backup.domain.model.BackupType;
 import com.intocns.backup.domain.port.ChunkedUploadProtocol;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -56,7 +56,7 @@ public class TusUploadController {
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
 
-        UploadType type = UploadType.valueOf(uploadType.toUpperCase());
+        BackupType type = BackupType.valueOf(uploadType.toUpperCase());
         UUID sessionId = initiateUpload.initiate(caller, type, filename, uploadLength, sha256);
 
         protocol.process(new JakartaHttpRequestWrapper(request), new JakartaHttpResponseWrapper(response));
