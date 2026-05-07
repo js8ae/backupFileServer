@@ -16,6 +16,8 @@ backup:
     trash-root: ${java.io.tmpdir}/backup-test/trash
   session:
     ttl-hours: 1
+  auth:
+    jwt-secret: test-secret-for-unit-tests-only-32chars!
 
 management:
   endpoints:

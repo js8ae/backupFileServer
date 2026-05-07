@@ -11,6 +11,8 @@ backup:
     incoming-root: ${BACKUP_INCOMING_ROOT}
     artifacts-root: ${BACKUP_ARTIFACTS_ROOT}
     trash-root: ${BACKUP_TRASH_ROOT}
+  auth:
+    jwt-secret: ${BACKUP_JWT_SECRET}
 
 management:
   endpoints:

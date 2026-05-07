@@ -27,15 +27,23 @@ public class AbortUploadUseCase {
 
     public void abort(UUID sessionId, HospitalId requestingHospital) throws IOException {
         UploadSession session = sessionRepository.findById(sessionId)
-            .orElseThrow(() -> new SessionNotFoundException(sessionId));
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+        doAbort(session, requestingHospital);
+    }
 
+    public void abortByTusUri(String tusUploadUri, HospitalId requestingHospital) throws IOException {
+        UploadSession session = sessionRepository.findByTusUploadUri(tusUploadUri)
+                .orElseThrow(() -> new SessionNotFoundException(null));
+        doAbort(session, requestingHospital);
+    }
+
+    private void doAbort(UploadSession session, HospitalId requestingHospital) throws IOException {
         if (!session.hospitalId().equals(requestingHospital)) {
-            throw new UnauthorizedSessionAccessException(sessionId, requestingHospital);
+            throw new UnauthorizedSessionAccessException(session.id(), requestingHospital);
         }
-
         if (session.tusUploadUri() != null) {
             protocol.deleteUpload(session.tusUploadUri());
         }
-        sessionRepository.updateStatus(sessionId, UploadStatus.ABORTED);
+        sessionRepository.updateStatus(session.id(), UploadStatus.ABORTED);
     }
 }

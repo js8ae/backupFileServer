@@ -26,3 +26,5 @@ backup:
     db-days: 30
     file-days: 90
     trash-days: 7
+  auth:
+    token-ttl-minutes: 15
