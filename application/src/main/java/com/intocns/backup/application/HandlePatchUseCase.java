@@ -28,6 +28,15 @@ public class HandlePatchUseCase {
         this.finalizeUploadUseCase = finalizeUploadUseCase;
     }
 
+    @Transactional(readOnly = true)
+    public void verifyAccess(String tusUploadUri, HospitalId caller) {
+        UploadSession session = sessionRepository.findByTusUploadUri(tusUploadUri)
+                .orElseThrow(() -> new SessionNotFoundException(null));
+        if (!session.hospitalId().equals(caller)) {
+            throw new UnauthorizedSessionAccessException(session.id(), caller);
+        }
+    }
+
     public void handle(String tusUploadUri, HospitalId caller) throws IOException {
         UploadSession session = sessionRepository.findByTusUploadUri(tusUploadUri)
                 .orElseThrow(() -> new SessionNotFoundException(null));

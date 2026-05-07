@@ -84,8 +84,10 @@ public class TusUploadController {
 
     @RequestMapping(value = "/**", method = RequestMethod.HEAD)
     public void head(
+            @AuthenticationPrincipal HospitalId caller,
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
+        handlePatch.verifyAccess(extractTusUploadUri(request), caller);
         protocol.process(new JakartaHttpRequestWrapper(request), new JakartaHttpResponseWrapper(response));
     }
 
@@ -112,6 +114,7 @@ public class TusUploadController {
             @AuthenticationPrincipal HospitalId caller,
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
+        handlePatch.verifyAccess(extractTusUploadUri(request), caller);
         protocol.process(new JakartaHttpRequestWrapper(request), new JakartaHttpResponseWrapper(response));
     }
 
