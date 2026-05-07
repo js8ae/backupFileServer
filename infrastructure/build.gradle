@@ -12,6 +12,8 @@ dependencies {
 
     // TUS 프로토콜 어댑터 (infrastructure만 직접 사용)
     implementation 'me.desair.tus:tus-java-server:1.0.0-3.0'
+    // TusJavaServerAdapter에서 HttpServletRequest/Response 캐스팅 필요 — 런타임은 Tomcat이 제공
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
 
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
