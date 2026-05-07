@@ -1,0 +1,41 @@
+[Unit]
+Description=Backup File Server
+After=network.target mariadb.service
+Requires=network.target
+
+[Service]
+Type=simple
+User=backup
+Group=backup
+
+# 시크릿은 이 파일에서 관리 (chmod 600, root:root)
+EnvironmentFile=/etc/backup-server/backup-server.env
+
+WorkingDirectory=/opt/backup-server
+
+ExecStart=/usr/bin/java \
+    -XX:+UseZGC \
+    -XX:MaxRAMPercentage=75.0 \
+    -Dspring.profiles.active=prod \
+    -jar /opt/backup-server/app.jar
+
+# 비정상 종료 시 재시작 (5초 대기)
+Restart=on-failure
+RestartSec=5
+
+# 로그는 journald로 수집 (systemd-journald)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=backup-server
+
+# 파일 디스크립터 제한 (대용량 업로드 동시 처리)
+LimitNOFILE=65536
+
+# 프로세스 보안 강화
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/backup /opt/backup-server
+
+[Install]
+WantedBy=multi-user.target
