@@ -35,7 +35,7 @@ public class JdbcHospitalCredentialRepository implements HospitalCredentialRepos
                   AND h.is_active = TRUE
                 """)
                 .param("clientId", clientId)
-                .query((rs, _) -> new HospitalCredential(
+                .query((rs, rowNum) -> new HospitalCredential(
                         new HospitalId(rs.getLong("cocode")),
                         rs.getString("client_id"),
                         rs.getString("client_secret_hash")
@@ -66,7 +66,7 @@ public class JdbcHospitalCredentialRepository implements HospitalCredentialRepos
                 ORDER BY created_at DESC
                 """)
                 .param("cocode", hospitalId.cocode())
-                .query((rs, _) -> new CredentialInfo(
+                .query((rs, rowNum) -> new CredentialInfo(
                         rs.getString("client_id"),
                         rs.getTimestamp("created_at", UTC).toInstant()
                 ))
