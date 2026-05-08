@@ -17,6 +17,7 @@ dependencies {
     testImplementation 'org.testcontainers:mariadb:1.20.6'
     testImplementation 'org.flywaydb:flyway-core'
     testImplementation 'org.flywaydb:flyway-mysql'
+    testImplementation 'org.apache.httpcomponents.client5:httpclient5'
 }
 
 test { useJUnitPlatform() }
