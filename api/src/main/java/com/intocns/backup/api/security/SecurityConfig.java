@@ -35,6 +35,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/token").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/files/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/prometheus", "/actuator/flyway").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
