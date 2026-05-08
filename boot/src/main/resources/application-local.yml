@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mariadb://211.169.234.36:3306/cloud_file_manage
+    url: jdbc:mariadb://211.239.154.38:3306/cloud_file_manage
     username: filemanager
     password: MTreFile$lACt@nd16475g3!$2X
     hikari:
