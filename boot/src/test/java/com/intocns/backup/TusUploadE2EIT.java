@@ -147,7 +147,7 @@ class TusUploadE2EIT extends AbstractIT {
 
         assertEquals(422, resp.getStatusCode().value());
         assertNotNull(resp.getBody(), "에러 body 유실 — response.reset() 미작동");
-        assertTrue(resp.getBody().contains("INTEGRITY_CHECK_FAILED"),
+        assertTrue(resp.getBody().contains("1007"),
             "응답 본문: " + resp.getBody());
 
         // 세션이 COMPLETED가 되어선 안 됨 (finalize 트랜잭션 롤백)
@@ -170,7 +170,7 @@ class TusUploadE2EIT extends AbstractIT {
             base + "/files", HttpMethod.POST, new HttpEntity<>(headers), String.class);
 
         assertEquals(HttpStatus.INSUFFICIENT_STORAGE, resp.getStatusCode());
-        assertTrue(resp.getBody().contains("QUOTA_EXCEEDED"),
+        assertTrue(resp.getBody().contains("1005"),
             "응답 본문: " + resp.getBody());
     }
 
@@ -185,7 +185,7 @@ class TusUploadE2EIT extends AbstractIT {
             base + "/files", HttpMethod.POST, new HttpEntity<>(headers), String.class);
 
         assertEquals(HttpStatus.FORBIDDEN, resp.getStatusCode());
-        assertTrue(resp.getBody().contains("LICENSE_EXPIRED"),
+        assertTrue(resp.getBody().contains("1006"),
             "응답 본문: " + resp.getBody());
     }
 
