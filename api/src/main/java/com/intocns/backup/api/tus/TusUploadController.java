@@ -79,7 +79,16 @@ public class TusUploadController {
 
         String tusUploadUri = extractTusUploadUri(request);
         protocol.process(new JakartaHttpRequestWrapper(request), new JakartaHttpResponseWrapper(response));
-        handlePatch.handle(tusUploadUri, caller);
+        try {
+            handlePatch.handle(tusUploadUri, caller);
+        } catch (IOException | RuntimeException e) {
+            // protocol.process()가 설정한 Content-Length: 0 등 TUS 헤더를 제거해
+            // GlobalExceptionHandler가 올바른 에러 응답(body 포함)을 쓸 수 있게 한다.
+            if (!response.isCommitted()) {
+                response.reset();
+            }
+            throw e;
+        }
     }
 
     @RequestMapping(value = "/**", method = RequestMethod.HEAD)

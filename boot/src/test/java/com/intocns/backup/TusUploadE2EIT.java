@@ -140,21 +140,20 @@ class TusUploadE2EIT extends AbstractIT {
         String tusUri = created.getHeaders().getLocation().getPath();
         String sessionId = created.getHeaders().getFirst("X-Session-Id");
 
-        // 단일 PATCH로 업로드 완료 → finalize → SHA-256 불일치 → 422
-        // NOTE: TUS 라이브러리가 204 + Content-Length:0을 먼저 커밋하므로
-        //       예외 핸들러가 status를 422로 바꿔도 response body는 빈 상태.
-        //       HTTP 응답 status 확인 + DB 상태로 무결성 실패를 검증한다.
+        // 단일 PATCH로 업로드 완료 → finalize → SHA-256 불일치 → 422 + 에러 body
         ResponseEntity<String> resp = http.exchange(
             base + tusUri, HttpMethod.PATCH,
             new HttpEntity<>(data, patchHeaders(jwt, 0)), String.class);
 
         assertEquals(422, resp.getStatusCode().value());
+        assertNotNull(resp.getBody(), "에러 body 유실 — response.reset() 미작동");
+        assertTrue(resp.getBody().contains("INTEGRITY_CHECK_FAILED"),
+            "응답 본문: " + resp.getBody());
 
         // 세션이 COMPLETED가 되어선 안 됨 (finalize 트랜잭션 롤백)
         assertNotNull(sessionId);
         UploadSession session = sessionRepository.findById(UUID.fromString(sessionId)).orElseThrow();
         assertNotEquals(UploadStatus.COMPLETED, session.status());
-        // artifact가 생성되지 않아야 함
         assertTrue(artifactRepository.findByHospitalId(new HospitalId(20003L)).isEmpty());
     }
 
