@@ -93,7 +93,7 @@ backup:
 ### 4. Swagger UI
 
 ```
-http://localhost:8080/swagger-ui.html
+http://localhost:8080/swagger-ui/index.html
 ```
 
 JWT Bearer 인증과 X-Admin-Key 인증 스키마가 등록되어 있습니다.
@@ -232,6 +232,16 @@ MariaDB, UTF-8mb4, 모든 시각은 UTC 기준 `DATETIME(6)`.
 
 ## 운영 배포
 
+### 운영 서버 정보
+
+| 항목 | 값 |
+|---|---|
+| 서버 URL | `https://backup.intocns.com:8282` |
+| Swagger UI | `https://backup.intocns.com:8282/swagger-ui/index.html` (허용 IP 제한) |
+| SSL 인증서 | `*.intocns.com` 와일드카드 (`/etc/ssl/intocns_20250825/`) |
+| 스토리지 | `/data/backup/{incoming,artifacts,trash}` |
+| 서비스 유저 | `intobackup` |
+
 ### 환경 변수 설정
 
 ```bash
@@ -241,14 +251,14 @@ chmod 600 /etc/backup-server/backup-server.env
 ```
 
 ```ini
-DB_URL=jdbc:mariadb://db.internal:3306/backup
+DB_URL=jdbc:mariadb://localhost:3306/cloud_file_manage
 DB_USER=backup_app
 DB_PASSWORD=<random>
 BACKUP_JWT_SECRET=<256비트 이상 랜덤>
 BACKUP_ADMIN_KEY=<admin key>
-BACKUP_INCOMING_ROOT=/var/backup/incoming
-BACKUP_ARTIFACTS_ROOT=/var/backup/artifacts
-BACKUP_TRASH_ROOT=/var/backup/trash
+BACKUP_INCOMING_ROOT=/data/backup/incoming
+BACKUP_ARTIFACTS_ROOT=/data/backup/artifacts
+BACKUP_TRASH_ROOT=/data/backup/trash
 ```
 
 ### systemd 유닛 등록
@@ -259,24 +269,34 @@ systemctl daemon-reload
 systemctl enable --now backup-server
 ```
 
-서비스 옵션: ZGC GC, `MaxRAMPercentage=75`, `LimitNOFILE=65536`, `NoNewPrivileges`, `ProtectSystem=strict`
+서비스 옵션: ZGC GC, `MaxRAMPercentage=75`, `LimitNOFILE=65536`, `NoNewPrivileges`, `ProtectSystem=strict`, `ReadWritePaths=/data/backup`
 
 ### Nginx 설정
 
 ```bash
-cp deploy/nginx/backup-server.conf /etc/nginx/sites-available/backup-server
-ln -s /etc/nginx/sites-available/backup-server /etc/nginx/sites-enabled/
+cp deploy/nginx/backup-server.conf /etc/nginx/sites-available/backup-server.conf
+ln -s /etc/nginx/sites-available/backup-server.conf /etc/nginx/sites-enabled/
+# nginx default 사이트 비활성화 필요
+sudo rm /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 ```
 
-대용량 스트리밍을 위해 `client_max_body_size 0`, `proxy_request_buffering off`, `proxy_read_timeout 86400s` 적용.
+- HTTPS 8282 포트, SSL 와일드카드 인증서 적용
+- `client_max_body_size 0`, `proxy_request_buffering off`, `proxy_read_timeout 86400s`, `client_body_timeout 86400s`
+- `/swagger-ui`, `/v3/api-docs` 경로는 허용 IP(`211.169.234.36`, `127.0.0.1`)에서만 접근 가능
 
 ### 스토리지 디렉토리 준비
 
 ```bash
-useradd -r -s /sbin/nologin backup
-mkdir -p /var/backup/{incoming,artifacts,trash}
-chown -R backup:backup /var/backup
+mkdir -p /data/backup/{incoming,artifacts,trash}
+chown -R intobackup:intobackup /data/backup
+```
+
+### 방화벽
+
+```bash
+sudo ufw allow 8282/tcp
+sudo ufw allow 4386/tcp   # SSH
 ```
 
 ### 모니터링
