@@ -43,7 +43,7 @@ public class JdbcArtifactRepository implements ArtifactRepository {
                 .param("sizeBytes", artifact.sizeBytes())
                 .param("sha256", artifact.sha256())
                 .param("createdAt", Timestamp.from(artifact.createdAt()))
-                .param("expiresAt", Timestamp.from(artifact.expiresAt()))
+                .param("expiresAt", artifact.expiresAt() != null ? Timestamp.from(artifact.expiresAt()) : null)
                 .param("purgedAt", artifact.purgedAt() != null ? Timestamp.from(artifact.purgedAt()) : null)
                 .update();
         return artifact;
@@ -77,6 +77,21 @@ public class JdbcArtifactRepository implements ArtifactRepository {
     }
 
     @Override
+    public List<BackupArtifact> findByHospitalIdAndType(HospitalId hospitalId, BackupType type) {
+        return jdbc.sql("""
+                SELECT * FROM backup_artifact
+                WHERE cocode = :cocode
+                  AND type = :type
+                  AND purged_at IS NULL
+                ORDER BY created_at ASC
+                """)
+                .param("cocode", hospitalId.cocode())
+                .param("type", type.name())
+                .query(this::mapRow)
+                .list();
+    }
+
+    @Override
     public List<BackupArtifact> findExpiredNotPurgedBefore(Instant threshold) {
         return jdbc.sql("""
                 SELECT * FROM backup_artifact
@@ -97,7 +112,8 @@ public class JdbcArtifactRepository implements ArtifactRepository {
     }
 
     private BackupArtifact mapRow(ResultSet rs, int rowNum) throws SQLException {
-        Timestamp purgedAt = rs.getTimestamp("purged_at", UTC);
+        Timestamp expiresAt = rs.getTimestamp("expires_at", UTC);
+        Timestamp purgedAt  = rs.getTimestamp("purged_at", UTC);
         return new BackupArtifact(
                 UUID.fromString(rs.getString("id")),
                 new HospitalId(rs.getLong("cocode")),
@@ -106,8 +122,8 @@ public class JdbcArtifactRepository implements ArtifactRepository {
                 rs.getLong("size_bytes"),
                 rs.getString("sha256"),
                 rs.getTimestamp("created_at", UTC).toInstant(),
-                rs.getTimestamp("expires_at", UTC).toInstant(),
-                purgedAt != null ? purgedAt.toInstant() : null
+                expiresAt != null ? expiresAt.toInstant() : null,
+                purgedAt  != null ? purgedAt.toInstant()  : null
         );
     }
 }

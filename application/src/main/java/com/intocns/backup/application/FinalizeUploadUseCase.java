@@ -3,46 +3,45 @@ package com.intocns.backup.application;
 import com.intocns.backup.domain.exception.IntegrityCheckFailedException;
 import com.intocns.backup.domain.exception.SessionNotFoundException;
 import com.intocns.backup.domain.model.BackupArtifact;
+import com.intocns.backup.domain.model.BackupType;
 import com.intocns.backup.domain.model.UploadSession;
 import com.intocns.backup.domain.model.UploadStatus;
 import com.intocns.backup.domain.port.*;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class FinalizeUploadUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(FinalizeUploadUseCase.class);
+    private static final int DB_MAX_COUNT = 3;
+
     private final UploadSessionRepository sessionRepository;
     private final ArtifactRepository artifactRepository;
     private final QuotaRepository quotaRepository;
     private final BackupStoragePort storage;
     private final ChunkedUploadProtocol protocol;
-    private final long retentionDbDays;
-    private final long retentionFileDays;
 
     public FinalizeUploadUseCase(
             UploadSessionRepository sessionRepository,
             ArtifactRepository artifactRepository,
             QuotaRepository quotaRepository,
             BackupStoragePort storage,
-            ChunkedUploadProtocol protocol,
-            @Value("${backup.retention.db-days:30}") long retentionDbDays,
-            @Value("${backup.retention.file-days:90}") long retentionFileDays) {
+            ChunkedUploadProtocol protocol) {
         this.sessionRepository = sessionRepository;
         this.artifactRepository = artifactRepository;
         this.quotaRepository = quotaRepository;
         this.storage = storage;
         this.protocol = protocol;
-        this.retentionDbDays = retentionDbDays;
-        this.retentionFileDays = retentionFileDays;
     }
 
     public void finalize(UUID sessionId) throws IOException {
@@ -56,10 +55,12 @@ public class FinalizeUploadUseCase {
             throw new IntegrityCheckFailedException(sessionId, session.expectedSha256(), actualSha256);
         }
 
-        long retentionDays = switch (session.type()) {
-            case DB -> retentionDbDays;
-            case FILE -> retentionFileDays;
-        };
+        Instant now = Instant.now();
+
+        // DB: 최대 3개 유지 — 초과 시 오래된 것부터 삭제
+        if (session.type() == BackupType.DB) {
+            evictOldestDbArtifacts(session.hospitalId(), now);
+        }
 
         Path artifactPath = storage.promoteToArtifacts(
             incomingData, session.hospitalId(), session.type(), session.originalFilename());
@@ -71,13 +72,26 @@ public class FinalizeUploadUseCase {
             artifactPath.toString(),
             session.totalSize(),
             actualSha256,
-            Instant.now(),
-            Instant.now().plus(retentionDays, ChronoUnit.DAYS),
+            now,
+            null,   // 무기한 보관
             null
         );
         artifactRepository.save(artifact);
         quotaRepository.addUsage(session.hospitalId(), session.totalSize());
         sessionRepository.updateStatus(sessionId, UploadStatus.COMPLETED);
         protocol.deleteUpload(session.tusUploadUri());
+    }
+
+    private void evictOldestDbArtifacts(com.intocns.backup.domain.model.HospitalId hospitalId, Instant now) throws IOException {
+        List<BackupArtifact> existing = artifactRepository.findByHospitalIdAndType(hospitalId, BackupType.DB);
+        // oldest-first 순서로 반환되므로, count >= DB_MAX_COUNT 이면 앞에서부터 제거
+        int toEvict = existing.size() - (DB_MAX_COUNT - 1);
+        for (int i = 0; i < toEvict; i++) {
+            BackupArtifact oldest = existing.get(i);
+            storage.moveToTrash(Path.of(oldest.storagePath()));
+            quotaRepository.subtractUsage(oldest.hospitalId(), oldest.sizeBytes());
+            artifactRepository.markPurged(oldest.id(), now);
+            log.info("evict=DB artifact_id={} cocode={}", oldest.id(), hospitalId.cocode());
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.intocns.backup.domain.port;
 
 import com.intocns.backup.domain.model.BackupArtifact;
+import com.intocns.backup.domain.model.BackupType;
 import com.intocns.backup.domain.model.HospitalId;
 
 import java.time.Instant;
@@ -13,6 +14,8 @@ public interface ArtifactRepository {
     Optional<BackupArtifact> findById(UUID id);
     List<BackupArtifact> findAllActive();
     List<BackupArtifact> findByHospitalId(HospitalId hospitalId);
+    /** 해당 병원·타입의 비삭제 artifact를 오래된 순(ASC)으로 반환 */
+    List<BackupArtifact> findByHospitalIdAndType(HospitalId hospitalId, BackupType type);
     List<BackupArtifact> findExpiredNotPurgedBefore(Instant threshold);
     void markPurged(UUID id, Instant purgedAt);
 }
