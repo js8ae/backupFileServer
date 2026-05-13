@@ -78,6 +78,7 @@ public class FinalizeUploadUseCase {
         );
         artifactRepository.save(artifact);
         quotaRepository.addUsage(session.hospitalId(), session.totalSize());
+        sessionRepository.updateOffset(sessionId, session.totalSize());
         sessionRepository.updateStatus(sessionId, UploadStatus.COMPLETED);
         protocol.deleteUpload(session.tusUploadUri());
     }
