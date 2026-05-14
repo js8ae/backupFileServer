@@ -42,13 +42,20 @@ backup-server/
 - **SHA-256 무결성 검증** — 업로드 완료 시 자동 검증
 - **병원별 쿼터 관리 & 자동 삭제 정책**
   - `FILE` 타입: 쿼터 초과 시 가장 오래된 파일부터 자동 삭제 후 업로드. 삭제 후에도 공간 부족이면 507
-  - `DB` 타입: 병원당 최대 3개 유지. 신규 저장 시 가장 오래된 것 자동 삭제
+  - `DB` 타입: 병원당 최대 3개 유지. 신규 저장 시 가장 오래된 것 자동 삭제. 업로드는 항상 허용
+  - DB artifact 용량은 예약 용량으로 보호 — FILE 업로드 가능 공간 = `limitBytes - dbReserved`
   - 보관 기간: **무기한** (만료 기반 자동 삭제 없음)
 - **라이선스 기간 검증** — 만료 병원 업로드 차단 (403)
-- **배치 잡 3종**
-  - `ExpiredSessionCleanupJob` — 만료 세션 ABORTED 처리 + 임시 파일 정리
-  - `RetentionPolicyJob` — `expires_at` 기반 만료 artifact 휴지통 이동 (무기한 정책 하에서는 미동작)
-  - `IntegrityVerificationJob` — 저장 파일 SHA-256 주기 재검증 (비트 부패 감지)
+- **감사 로그** — 업로드 라이프사이클(`backup_audit_log`), 인증 이벤트(`auth_audit_log`), 스케줄러 실행 결과(`job_execution_log`) DB 기록
+- **배치 잡 5종**
+
+| 잡 | 실행 시각 | 역할 |
+|---|---|---|
+| `QuotaRebalanceJob` | 매일 01:00 | 병원 한도 변경 후 초과 FILE artifact 자동 정리 |
+| `RetentionPolicyJob` | 매일 02:00 | expires_at 만료 artifact → trash 이동 (무기한 정책 하에서는 미동작) |
+| `IntegrityVerificationJob` | 매일 03:00 | 저장 파일 SHA-256 주기 재검증 (비트 부패 감지) |
+| `TrashCleanupJob` | 매일 04:00 | trash 7일 경과 파일 영구 삭제 |
+| `ExpiredSessionCleanupJob` | 매 정시 | 만료 세션 ABORTED 처리 + TUS 임시 파일 정리 |
 
 ---
 
@@ -146,9 +153,14 @@ Tus-Resumable: 1.0.0
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| POST | `/admin/hospitals` | 병원 등록 |
+| POST | `/admin/hospitals` | 병원 단건 등록 |
+| POST | `/admin/hospitals/bulk` | 병원 일괄 등록 (부분 성공, 성공/실패 목록 반환) |
 | GET | `/admin/hospitals` | 병원 목록 조회 |
-| PUT | `/admin/hospitals/{cocode}` | 병원 정보 수정 |
+| PATCH | `/admin/hospitals/{cocode}` | 병원 정보 수정 |
+| GET | `/admin/hospitals/{cocode}/quota` | 병원 쿼터 조회 |
+| GET | `/admin/hospitals/{cocode}/artifacts` | 백업 artifact 목록 조회 |
+| GET | `/admin/hospitals/{cocode}/sessions` | 업로드 세션 목록 조회 |
+| DELETE | `/admin/hospitals/{cocode}/data` | 백업 데이터 초기화 (artifact trash 이동 + 세션 ABORTED + 쿼터 리셋) |
 | POST | `/admin/hospitals/{cocode}/credentials` | 자격증명 발급 |
 | GET | `/admin/hospitals/{cocode}/credentials` | 자격증명 목록 |
 | DELETE | `/admin/hospitals/{cocode}/credentials/{clientId}` | 자격증명 폐기 |
@@ -170,9 +182,11 @@ Tus-Resumable: 1.0.0
       {yyyy}/{MM}/{dd}/
         {timestamp}_{filename}    ← 업로드 완료 후 영구 보관
 
-{trash-root}/
-  {yyyy-MM-dd}/
-    {filename}    ← 보관 기간 만료 후 영구 삭제 전 대기
+{trash-root}/             ← artifacts와 동일한 구조로 미러링 (롤백 복구 편의)
+  {cocode}/
+    {type: db|file}/
+      {yyyy}/{MM}/{dd}/
+        {timestamp}_{filename}    ← 7일 후 영구 삭제
 ```
 
 ---
@@ -188,7 +202,9 @@ MariaDB, UTF-8mb4, 모든 시각은 UTC 기준 `DATETIME(6)`.
 | `backup_artifact` | 업로드 완료 파일 메타데이터 |
 | `hospital_quota` | 병원별 사용 용량 |
 | `hospital_credential` | 병원별 client_id / bcrypt 해시 |
-| `backup_audit_log` | 이벤트 감사 로그 |
+| `backup_audit_log` | 업로드 라이프사이클 감사 로그 |
+| `auth_audit_log` | 인증 성공/실패 로그 (client_id, IP, cocode) |
+| `job_execution_log` | 스케줄러 실행 결과 (잡명, 시작/종료, 성공/실패, summary JSON) |
 
 마이그레이션은 Flyway로 관리: `boot/src/main/resources/db/migration/`
 
@@ -196,6 +212,8 @@ MariaDB, UTF-8mb4, 모든 시각은 UTC 기준 `DATETIME(6)`.
 |---|---|---|
 | V1 | `V1__init.sql` | 초기 스키마 |
 | V2 | `V2__nullable_expires_at.sql` | `backup_artifact.expires_at` NULL 허용 (무기한 보관 정책) |
+| V3 | `V3__add_auth_audit_log.sql` | `auth_audit_log` 테이블 추가 |
+| V4 | `V4__add_job_execution_log.sql` | `job_execution_log` 테이블 추가 |
 
 ---
 
@@ -229,7 +247,7 @@ MariaDB, UTF-8mb4, 모든 시각은 UTC 기준 `DATETIME(6)`.
 ./gradlew :boot:test          # E2E 포함
 ```
 
-총 69개 테스트, 모두 통과.
+총 69개 테스트, 모두 통과. (Testcontainers 통합/E2E는 Docker 필요)
 
 - **도메인 단위 테스트**: `HospitalTest`, `HospitalQuotaTest`
 - **유스케이스 단위 테스트**: 10종 (Mockito)
