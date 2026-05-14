@@ -160,7 +160,7 @@ class FinalizeUploadUseCaseTest {
     }
 
     private BackupArtifact artifact(BackupType type, String path, long sizeBytes, Instant createdAt) {
-        return new BackupArtifact(UUID.randomUUID(), HOSPITAL_ID, type, path, sizeBytes,
+        return new BackupArtifact(UUID.randomUUID(), HOSPITAL_ID, type, path, "original.zip", sizeBytes,
                 "sha256", createdAt, null, null);
     }
 }

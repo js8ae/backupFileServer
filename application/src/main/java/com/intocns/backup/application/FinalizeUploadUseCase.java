@@ -71,6 +71,7 @@ public class FinalizeUploadUseCase {
             session.hospitalId(),
             session.type(),
             artifactPath.toString(),
+            session.originalFilename(),
             session.totalSize(),
             actualSha256,
             now,

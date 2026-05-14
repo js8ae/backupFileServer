@@ -32,14 +32,15 @@ public class JdbcArtifactRepository implements ArtifactRepository {
     public BackupArtifact save(BackupArtifact artifact) {
         jdbc.sql("""
                 INSERT INTO backup_artifact
-                    (id, cocode, type, storage_path, size_bytes, sha256, created_at, expires_at, purged_at)
+                    (id, cocode, type, storage_path, original_filename, size_bytes, sha256, created_at, expires_at, purged_at)
                 VALUES
-                    (:id, :cocode, :type, :storagePath, :sizeBytes, :sha256, :createdAt, :expiresAt, :purgedAt)
+                    (:id, :cocode, :type, :storagePath, :originalFilename, :sizeBytes, :sha256, :createdAt, :expiresAt, :purgedAt)
                 """)
                 .param("id", artifact.id().toString())
                 .param("cocode", artifact.hospitalId().cocode())
                 .param("type", artifact.type().name())
                 .param("storagePath", artifact.storagePath())
+                .param("originalFilename", artifact.originalFilename())
                 .param("sizeBytes", artifact.sizeBytes())
                 .param("sha256", artifact.sha256())
                 .param("createdAt", Timestamp.from(artifact.createdAt()))
@@ -121,6 +122,7 @@ public class JdbcArtifactRepository implements ArtifactRepository {
                 new HospitalId(rs.getLong("cocode")),
                 BackupType.valueOf(rs.getString("type")),
                 rs.getString("storage_path"),
+                rs.getString("original_filename"),
                 rs.getLong("size_bytes"),
                 rs.getString("sha256"),
                 rs.getTimestamp("created_at", UTC).toInstant(),

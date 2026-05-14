@@ -8,6 +8,7 @@ import java.util.UUID;
 public record ArtifactSummary(
         UUID id,
         String type,
+        String originalFilename,
         String storagePath,
         long sizeBytes,
         String sha256,
@@ -19,6 +20,7 @@ public record ArtifactSummary(
         return new ArtifactSummary(
                 artifact.id(),
                 artifact.type().name(),
+                artifact.originalFilename(),
                 artifact.storagePath(),
                 artifact.sizeBytes(),
                 artifact.sha256(),

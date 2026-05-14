@@ -8,6 +8,7 @@ public record BackupArtifact(
     HospitalId hospitalId,
     BackupType type,
     String storagePath,
+    String originalFilename,
     long sizeBytes,
     String sha256,
     Instant createdAt,
