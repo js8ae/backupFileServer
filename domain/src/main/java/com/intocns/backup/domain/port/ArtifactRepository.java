@@ -17,5 +17,6 @@ public interface ArtifactRepository {
     /** 해당 병원·타입의 비삭제 artifact를 오래된 순(ASC)으로 반환 */
     List<BackupArtifact> findByHospitalIdAndType(HospitalId hospitalId, BackupType type);
     List<BackupArtifact> findExpiredNotPurgedBefore(Instant threshold);
-    void markPurged(UUID id, Instant purgedAt);
+    /** @return true if actually marked (first time), false if already purged by another transaction */
+    boolean markPurged(UUID id, Instant purgedAt);
 }

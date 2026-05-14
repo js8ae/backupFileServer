@@ -105,6 +105,7 @@ class FinalizeUploadUseCaseTest {
         BackupArtifact old3 = artifact(BackupType.DB, "/artifacts/old3.zip", 300L, Instant.now().minusSeconds(100));
         given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.DB))
                 .willReturn(List.of(old1, old2, old3));
+        given(artifactRepository.markPurged(eq(old1.id()), any())).willReturn(true);
 
         useCase.finalize(SESSION_ID);
 

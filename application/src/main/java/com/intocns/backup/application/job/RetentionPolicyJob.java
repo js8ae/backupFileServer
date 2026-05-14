@@ -54,8 +54,9 @@ public class RetentionPolicyJob {
         for (BackupArtifact artifact : expired) {
             try {
                 storagePort.moveToTrash(Path.of(artifact.storagePath()));
-                quotaRepository.subtractUsage(artifact.hospitalId(), artifact.sizeBytes());
-                artifactRepository.markPurged(artifact.id(), now);
+                if (artifactRepository.markPurged(artifact.id(), now)) {
+                    quotaRepository.subtractUsage(artifact.hospitalId(), artifact.sizeBytes());
+                }
                 auditLogPort.record(new AuditLog(
                     UUID.randomUUID(), null, artifact.id(), artifact.hospitalId(),
                     AuditEvent.ARTIFACT_EVICTED,

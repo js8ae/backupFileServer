@@ -95,6 +95,7 @@ class InitiateUploadUseCaseTest {
         BackupArtifact old = artifact(BackupType.FILE, "/artifacts/old.zip", 6_000L);
         given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.FILE))
                 .willReturn(List.of(old));
+        given(artifactRepository.markPurged(eq(old.id()), any())).willReturn(true);
         given(sessionRepository.save(any())).willAnswer(i -> i.getArgument(0));
 
         UUID sessionId = useCase.initiate(fileCommand(5_000L));

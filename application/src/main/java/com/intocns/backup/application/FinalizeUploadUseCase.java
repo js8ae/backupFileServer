@@ -101,8 +101,9 @@ public class FinalizeUploadUseCase {
         for (int i = 0; i < toEvict; i++) {
             BackupArtifact oldest = existing.get(i);
             storage.moveToTrash(Path.of(oldest.storagePath()));
-            quotaRepository.subtractUsage(oldest.hospitalId(), oldest.sizeBytes());
-            artifactRepository.markPurged(oldest.id(), now);
+            if (artifactRepository.markPurged(oldest.id(), now)) {
+                quotaRepository.subtractUsage(oldest.hospitalId(), oldest.sizeBytes());
+            }
             log.info("evict=DB artifact_id={} cocode={}", oldest.id(), hospitalId.cocode());
             auditLogPort.record(new AuditLog(
                 UUID.randomUUID(), null, oldest.id(), hospitalId,

@@ -104,11 +104,13 @@ public class JdbcArtifactRepository implements ArtifactRepository {
     }
 
     @Override
-    public void markPurged(UUID id, Instant purgedAt) {
-        jdbc.sql("UPDATE backup_artifact SET purged_at = :purgedAt WHERE id = :id")
+    public boolean markPurged(UUID id, Instant purgedAt) {
+        int updated = jdbc.sql(
+                "UPDATE backup_artifact SET purged_at = :purgedAt WHERE id = :id AND purged_at IS NULL")
                 .param("purgedAt", Timestamp.from(purgedAt))
                 .param("id", id.toString())
                 .update();
+        return updated > 0;
     }
 
     private BackupArtifact mapRow(ResultSet rs, int rowNum) throws SQLException {

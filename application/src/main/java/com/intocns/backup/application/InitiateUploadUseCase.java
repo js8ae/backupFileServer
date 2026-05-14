@@ -130,9 +130,10 @@ public class InitiateUploadUseCase {
         for (BackupArtifact artifact : fileArtifacts) { // oldest-first
             if (freed >= needed) break;
             storagePort.moveToTrash(Path.of(artifact.storagePath()));
-            quotaRepository.subtractUsage(hospitalId, artifact.sizeBytes());
-            artifactRepository.markPurged(artifact.id(), now);
-            freed += artifact.sizeBytes();
+            if (artifactRepository.markPurged(artifact.id(), now)) {
+                quotaRepository.subtractUsage(hospitalId, artifact.sizeBytes());
+                freed += artifact.sizeBytes();
+            }
             log.info("evict=FILE artifact_id={} cocode={} size_bytes={}", artifact.id(), hospitalId.cocode(), artifact.sizeBytes());
             auditLogPort.record(new AuditLog(
                 UUID.randomUUID(), null, artifact.id(), hospitalId,
