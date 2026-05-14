@@ -133,16 +133,16 @@ public class InitiateUploadUseCase {
             if (artifactRepository.markPurged(artifact.id(), now)) {
                 quotaRepository.subtractUsage(hospitalId, artifact.sizeBytes());
                 freed += artifact.sizeBytes();
+                log.info("evict=FILE artifact_id={} cocode={} size_bytes={}", artifact.id(), hospitalId.cocode(), artifact.sizeBytes());
+                auditLogPort.record(new AuditLog(
+                    UUID.randomUUID(), null, artifact.id(), hospitalId,
+                    AuditEvent.ARTIFACT_EVICTED,
+                    Map.of("type", BackupType.FILE.name(),
+                           "size_bytes", String.valueOf(artifact.sizeBytes()),
+                           "reason", "QUOTA_EXCEEDED"),
+                    now
+                ));
             }
-            log.info("evict=FILE artifact_id={} cocode={} size_bytes={}", artifact.id(), hospitalId.cocode(), artifact.sizeBytes());
-            auditLogPort.record(new AuditLog(
-                UUID.randomUUID(), null, artifact.id(), hospitalId,
-                AuditEvent.ARTIFACT_EVICTED,
-                Map.of("type", BackupType.FILE.name(),
-                       "size_bytes", String.valueOf(artifact.sizeBytes()),
-                       "reason", "QUOTA_EXCEEDED"),
-                now
-            ));
         }
 
         if (currentFileUsed - freed + newFileSize > fileLimit) {
