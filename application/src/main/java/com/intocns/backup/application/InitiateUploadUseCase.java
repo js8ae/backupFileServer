@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -29,6 +30,7 @@ public class InitiateUploadUseCase {
     private final QuotaRepository quotaRepository;
     private final ArtifactRepository artifactRepository;
     private final BackupStoragePort storagePort;
+    private final AuditLogPort auditLogPort;
     private final long sessionTtlHours;
 
     public InitiateUploadUseCase(
@@ -37,12 +39,14 @@ public class InitiateUploadUseCase {
             QuotaRepository quotaRepository,
             ArtifactRepository artifactRepository,
             BackupStoragePort storagePort,
+            AuditLogPort auditLogPort,
             @Value("${backup.session.ttl-hours:24}") long sessionTtlHours) {
         this.hospitalRepository = hospitalRepository;
         this.sessionRepository = sessionRepository;
         this.quotaRepository = quotaRepository;
         this.artifactRepository = artifactRepository;
         this.storagePort = storagePort;
+        this.auditLogPort = auditLogPort;
         this.sessionTtlHours = sessionTtlHours;
     }
 
@@ -84,6 +88,16 @@ public class InitiateUploadUseCase {
             now
         );
         sessionRepository.save(session);
+
+        auditLogPort.record(new AuditLog(
+            UUID.randomUUID(), session.id(), null, command.hospitalId(),
+            AuditEvent.UPLOAD_INITIATED,
+            Map.of("filename", command.originalFilename(),
+                   "type", command.type().name(),
+                   "total_size_bytes", String.valueOf(command.totalSize())),
+            now
+        ));
+
         return session.id();
     }
 
@@ -104,6 +118,14 @@ public class InitiateUploadUseCase {
             artifactRepository.markPurged(artifact.id(), now);
             freed += artifact.sizeBytes();
             log.info("evict=FILE artifact_id={} cocode={} size_bytes={}", artifact.id(), hospitalId.cocode(), artifact.sizeBytes());
+            auditLogPort.record(new AuditLog(
+                UUID.randomUUID(), null, artifact.id(), hospitalId,
+                AuditEvent.ARTIFACT_EVICTED,
+                Map.of("type", BackupType.FILE.name(),
+                       "size_bytes", String.valueOf(artifact.sizeBytes()),
+                       "reason", "QUOTA_EXCEEDED"),
+                now
+            ));
         }
 
         HospitalQuota updated = quotaRepository.findByHospitalId(hospitalId).orElse(quota);

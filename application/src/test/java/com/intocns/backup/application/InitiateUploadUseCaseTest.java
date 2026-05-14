@@ -31,6 +31,7 @@ class InitiateUploadUseCaseTest {
     @Mock QuotaRepository quotaRepository;
     @Mock ArtifactRepository artifactRepository;
     @Mock BackupStoragePort storagePort;
+    @Mock AuditLogPort auditLogPort;
 
     InitiateUploadUseCase useCase;
 
@@ -40,7 +41,7 @@ class InitiateUploadUseCaseTest {
     @BeforeEach
     void setUp() {
         useCase = new InitiateUploadUseCase(hospitalRepository, sessionRepository,
-                quotaRepository, artifactRepository, storagePort, 24L);
+                quotaRepository, artifactRepository, storagePort, auditLogPort, 24L);
     }
 
     @Test

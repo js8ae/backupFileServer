@@ -3,6 +3,7 @@ package com.intocns.backup.application;
 import com.intocns.backup.domain.exception.SessionNotFoundException;
 import com.intocns.backup.domain.exception.UnauthorizedSessionAccessException;
 import com.intocns.backup.domain.model.*;
+import com.intocns.backup.domain.port.AuditLogPort;
 import com.intocns.backup.domain.port.ChunkedUploadProtocol;
 import com.intocns.backup.domain.port.UploadSessionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,7 @@ class AbortUploadUseCaseTest {
 
     @Mock UploadSessionRepository sessionRepository;
     @Mock ChunkedUploadProtocol protocol;
+    @Mock AuditLogPort auditLogPort;
 
     AbortUploadUseCase useCase;
 
@@ -34,7 +36,7 @@ class AbortUploadUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        useCase = new AbortUploadUseCase(sessionRepository, protocol);
+        useCase = new AbortUploadUseCase(sessionRepository, protocol, auditLogPort);
     }
 
     @Test

@@ -30,6 +30,7 @@ class FinalizeUploadUseCaseTest {
     @Mock QuotaRepository quotaRepository;
     @Mock BackupStoragePort storage;
     @Mock ChunkedUploadProtocol protocol;
+    @Mock AuditLogPort auditLogPort;
 
     FinalizeUploadUseCase useCase;
 
@@ -41,7 +42,7 @@ class FinalizeUploadUseCaseTest {
     @BeforeEach
     void setUp() {
         useCase = new FinalizeUploadUseCase(sessionRepository, artifactRepository,
-                quotaRepository, storage, protocol);
+                quotaRepository, storage, protocol, auditLogPort);
     }
 
     @Test

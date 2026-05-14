@@ -2,10 +2,7 @@ package com.intocns.backup.application;
 
 import com.intocns.backup.domain.exception.IntegrityCheckFailedException;
 import com.intocns.backup.domain.exception.SessionNotFoundException;
-import com.intocns.backup.domain.model.BackupArtifact;
-import com.intocns.backup.domain.model.BackupType;
-import com.intocns.backup.domain.model.UploadSession;
-import com.intocns.backup.domain.model.UploadStatus;
+import com.intocns.backup.domain.model.*;
 import com.intocns.backup.domain.port.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -30,18 +28,21 @@ public class FinalizeUploadUseCase {
     private final QuotaRepository quotaRepository;
     private final BackupStoragePort storage;
     private final ChunkedUploadProtocol protocol;
+    private final AuditLogPort auditLogPort;
 
     public FinalizeUploadUseCase(
             UploadSessionRepository sessionRepository,
             ArtifactRepository artifactRepository,
             QuotaRepository quotaRepository,
             BackupStoragePort storage,
-            ChunkedUploadProtocol protocol) {
+            ChunkedUploadProtocol protocol,
+            AuditLogPort auditLogPort) {
         this.sessionRepository = sessionRepository;
         this.artifactRepository = artifactRepository;
         this.quotaRepository = quotaRepository;
         this.storage = storage;
         this.protocol = protocol;
+        this.auditLogPort = auditLogPort;
     }
 
     public void finalize(UUID sessionId) throws IOException {
@@ -81,9 +82,19 @@ public class FinalizeUploadUseCase {
         sessionRepository.updateOffset(sessionId, session.totalSize());
         sessionRepository.updateStatus(sessionId, UploadStatus.COMPLETED);
         protocol.deleteUpload(session.tusUploadUri());
+
+        auditLogPort.record(new AuditLog(
+            UUID.randomUUID(), sessionId, artifact.id(), session.hospitalId(),
+            AuditEvent.UPLOAD_COMPLETED,
+            Map.of("filename", session.originalFilename(),
+                   "type", session.type().name(),
+                   "size_bytes", String.valueOf(session.totalSize()),
+                   "sha256", actualSha256),
+            now
+        ));
     }
 
-    private void evictOldestDbArtifacts(com.intocns.backup.domain.model.HospitalId hospitalId, Instant now) throws IOException {
+    private void evictOldestDbArtifacts(HospitalId hospitalId, Instant now) throws IOException {
         List<BackupArtifact> existing = artifactRepository.findByHospitalIdAndType(hospitalId, BackupType.DB);
         // oldest-first 순서로 반환되므로, count >= DB_MAX_COUNT 이면 앞에서부터 제거
         int toEvict = existing.size() - (DB_MAX_COUNT - 1);
@@ -93,6 +104,14 @@ public class FinalizeUploadUseCase {
             quotaRepository.subtractUsage(oldest.hospitalId(), oldest.sizeBytes());
             artifactRepository.markPurged(oldest.id(), now);
             log.info("evict=DB artifact_id={} cocode={}", oldest.id(), hospitalId.cocode());
+            auditLogPort.record(new AuditLog(
+                UUID.randomUUID(), null, oldest.id(), hospitalId,
+                AuditEvent.ARTIFACT_EVICTED,
+                Map.of("type", BackupType.DB.name(),
+                       "size_bytes", String.valueOf(oldest.sizeBytes()),
+                       "reason", "DB_MAX_COUNT"),
+                now
+            ));
         }
     }
 }

@@ -1,7 +1,8 @@
 package com.intocns.backup.application.job;
 
-import com.intocns.backup.domain.model.BackupArtifact;
+import com.intocns.backup.domain.model.*;
 import com.intocns.backup.domain.port.ArtifactRepository;
+import com.intocns.backup.domain.port.AuditLogPort;
 import com.intocns.backup.domain.port.BackupStoragePort;
 import com.intocns.backup.domain.port.QuotaRepository;
 import org.slf4j.Logger;
@@ -14,6 +15,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class RetentionPolicyJob {
@@ -23,13 +26,16 @@ public class RetentionPolicyJob {
     private final ArtifactRepository artifactRepository;
     private final BackupStoragePort storagePort;
     private final QuotaRepository quotaRepository;
+    private final AuditLogPort auditLogPort;
 
     public RetentionPolicyJob(ArtifactRepository artifactRepository,
                               BackupStoragePort storagePort,
-                              QuotaRepository quotaRepository) {
+                              QuotaRepository quotaRepository,
+                              AuditLogPort auditLogPort) {
         this.artifactRepository = artifactRepository;
         this.storagePort = storagePort;
         this.quotaRepository = quotaRepository;
+        this.auditLogPort = auditLogPort;
     }
 
     @Scheduled(cron = "0 0 2 * * *")  // 매일 새벽 2시
@@ -50,6 +56,14 @@ public class RetentionPolicyJob {
                 storagePort.moveToTrash(Path.of(artifact.storagePath()));
                 quotaRepository.subtractUsage(artifact.hospitalId(), artifact.sizeBytes());
                 artifactRepository.markPurged(artifact.id(), now);
+                auditLogPort.record(new AuditLog(
+                    UUID.randomUUID(), null, artifact.id(), artifact.hospitalId(),
+                    AuditEvent.ARTIFACT_EVICTED,
+                    Map.of("type", artifact.type().name(),
+                           "size_bytes", String.valueOf(artifact.sizeBytes()),
+                           "reason", "RETENTION_EXPIRED"),
+                    now
+                ));
                 moved++;
             } catch (IOException e) {
                 log.error("job=RetentionPolicy artifact_id={} cocode={} error=move_to_trash_failed msg={}",
