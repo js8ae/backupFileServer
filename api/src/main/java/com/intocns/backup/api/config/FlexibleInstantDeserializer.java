@@ -7,7 +7,7 @@ import tools.jackson.databind.deser.std.StdDeserializer;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
@@ -26,7 +26,9 @@ public class FlexibleInstantDeserializer extends StdDeserializer<Instant> {
         try {
             return Instant.parse(text);
         } catch (DateTimeParseException e) {
-            return LocalDateTime.parse(text, SPACE_FORMAT).toInstant(ZoneOffset.UTC);
+            return LocalDateTime.parse(text, SPACE_FORMAT)
+                    .atZone(ZoneId.of("Asia/Seoul"))
+                    .toInstant();
         }
     }
 }
