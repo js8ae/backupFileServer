@@ -20,7 +20,11 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
+import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.List;
+import java.util.stream.Stream;
 
 @Component
 public class LocalFileSystemStorageAdapter implements BackupStoragePort {
@@ -82,6 +86,48 @@ public class LocalFileSystemStorageAdapter implements BackupStoragePort {
             }
         }
         return HexFormat.of().formatHex(digest.digest());
+    }
+
+    @Override
+    public int purgeTrash(LocalDate cutoff) throws IOException {
+        if (!Files.exists(trashRoot)) {
+            return 0;
+        }
+        int deleted = 0;
+        try (Stream<Path> dirs = Files.list(trashRoot)) {
+            for (Path dir : dirs.toList()) {
+                if (!Files.isDirectory(dir)) {
+                    continue;
+                }
+                LocalDate dirDate;
+                try {
+                    dirDate = LocalDate.parse(dir.getFileName().toString());
+                } catch (DateTimeParseException e) {
+                    log.warn("purgeTrash skipped unexpected dir: {}", dir.getFileName());
+                    continue;
+                }
+                if (!dirDate.isAfter(cutoff)) {
+                    deleteDirectory(dir);
+                    deleted++;
+                }
+            }
+        }
+        return deleted;
+    }
+
+    private void deleteDirectory(Path dir) {
+        try (Stream<Path> walk = Files.walk(dir)) {
+            List<Path> paths = walk.sorted(Comparator.reverseOrder()).toList();
+            for (Path path : paths) {
+                try {
+                    Files.delete(path);
+                } catch (IOException e) {
+                    log.warn("purgeTrash delete failed: {}", path);
+                }
+            }
+        } catch (IOException e) {
+            log.error("purgeTrash walk failed dir={} msg={}", dir, e.getMessage());
+        }
     }
 
     private static String sanitize(String filename) {

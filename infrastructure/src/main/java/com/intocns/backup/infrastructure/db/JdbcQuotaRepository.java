@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -19,6 +20,13 @@ public class JdbcQuotaRepository implements QuotaRepository {
 
     public JdbcQuotaRepository(JdbcClient jdbc) {
         this.jdbc = jdbc;
+    }
+
+    @Override
+    public List<HospitalQuota> findAll() {
+        return jdbc.sql("SELECT * FROM hospital_quota")
+                .query(this::mapRow)
+                .list();
     }
 
     @Override
