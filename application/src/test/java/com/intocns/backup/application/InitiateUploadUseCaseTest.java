@@ -49,6 +49,8 @@ class InitiateUploadUseCaseTest {
         given(hospitalRepository.findById(HOSPITAL_ID)).willReturn(Optional.of(activeHospital()));
         given(quotaRepository.findByHospitalId(HOSPITAL_ID))
                 .willReturn(Optional.of(new HospitalQuota(HOSPITAL_ID, 0L, 10_000L)));
+        given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.DB)).willReturn(List.of());
+        given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.FILE)).willReturn(List.of());
         ArgumentCaptor<UploadSession> captor = ArgumentCaptor.forClass(UploadSession.class);
         given(sessionRepository.save(captor.capture())).willAnswer(i -> i.getArgument(0));
 
@@ -83,27 +85,13 @@ class InitiateUploadUseCaseTest {
     }
 
     @Test
-    void FILE_쿼터_초과_evict_불가시_예외발생() throws IOException {
-        given(hospitalRepository.findById(HOSPITAL_ID)).willReturn(Optional.of(activeHospital()));
-        // used=9900, limit=10000 → 200짜리 업로드 불가, evict 후에도 공간 부족
-        given(quotaRepository.findByHospitalId(HOSPITAL_ID))
-                .willReturn(Optional.of(new HospitalQuota(HOSPITAL_ID, 9_900L, 10_000L)));
-        given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.FILE))
-                .willReturn(List.of()); // 삭제할 artifact 없음
-
-        assertThrows(QuotaExceededException.class, () -> useCase.initiate(fileCommand(200L)));
-    }
-
-    @Test
     void FILE_쿼터_초과시_오래된파일_삭제후_업로드() throws IOException {
         given(hospitalRepository.findById(HOSPITAL_ID)).willReturn(Optional.of(activeHospital()));
-
-        HospitalQuota overQuota = new HospitalQuota(HOSPITAL_ID, 9_500L, 10_000L);
-        HospitalQuota afterEvict = new HospitalQuota(HOSPITAL_ID, 3_500L, 10_000L); // 6000짜리 삭제 후
         given(quotaRepository.findByHospitalId(HOSPITAL_ID))
-                .willReturn(Optional.of(overQuota))   // 첫 번째 호출
-                .willReturn(Optional.of(afterEvict)); // eviction 후 재조회
-
+                .willReturn(Optional.of(new HospitalQuota(HOSPITAL_ID, 6_000L, 10_000L)));
+        // DB 없음 → fileLimit = 10000
+        given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.DB)).willReturn(List.of());
+        // FILE artifact 6000바이트 존재 → currentFileUsed=6000, 6000+5000=11000 > 10000 → evict
         BackupArtifact old = artifact(BackupType.FILE, "/artifacts/old.zip", 6_000L);
         given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.FILE))
                 .willReturn(List.of(old));
@@ -115,6 +103,38 @@ class InitiateUploadUseCaseTest {
         verify(storagePort).moveToTrash(any());
         verify(quotaRepository).subtractUsage(HOSPITAL_ID, 6_000L);
         verify(artifactRepository).markPurged(eq(old.id()), any());
+    }
+
+    @Test
+    void FILE_evict_후에도_공간_부족하면_507() throws IOException {
+        given(hospitalRepository.findById(HOSPITAL_ID)).willReturn(Optional.of(activeHospital()));
+        given(quotaRepository.findByHospitalId(HOSPITAL_ID))
+                .willReturn(Optional.of(new HospitalQuota(HOSPITAL_ID, 9_800L, 10_000L)));
+        // DB artifact 9800 → fileLimit = 200
+        given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.DB))
+                .willReturn(List.of(artifact(BackupType.DB, "/artifacts/db.zip", 9_800L)));
+        // FILE 없음 → evict 불가, 500바이트 업로드 시 507
+        given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.FILE))
+                .willReturn(List.of());
+
+        assertThrows(QuotaExceededException.class, () -> useCase.initiate(fileCommand(500L)));
+        verify(storagePort, never()).moveToTrash(any());
+    }
+
+    @Test
+    void DB_파일이_한도_초과시_FILE_업로드_507() throws IOException {
+        given(hospitalRepository.findById(HOSPITAL_ID)).willReturn(Optional.of(activeHospital()));
+        given(quotaRepository.findByHospitalId(HOSPITAL_ID))
+                .willReturn(Optional.of(new HospitalQuota(HOSPITAL_ID, 11_000L, 10_000L)));
+        // DB artifacts 합산이 한도 초과 → fileLimit <= 0 → 즉시 507
+        given(artifactRepository.findByHospitalIdAndType(HOSPITAL_ID, BackupType.DB))
+                .willReturn(List.of(
+                        artifact(BackupType.DB, "/artifacts/db1.zip", 6_000L),
+                        artifact(BackupType.DB, "/artifacts/db2.zip", 5_000L)));
+
+        assertThrows(QuotaExceededException.class, () -> useCase.initiate(fileCommand(100L)));
+        verify(artifactRepository, never()).findByHospitalIdAndType(HOSPITAL_ID, BackupType.FILE);
+        verify(storagePort, never()).moveToTrash(any());
     }
 
     @Test

@@ -68,10 +68,10 @@ public class InitiateUploadUseCase {
             throw new LicenseExpiredException(command.hospitalId());
         }
 
-        // FILE: 쿼터 초과 시 오래된 파일부터 삭제 후 재확인
-        // DB: 최대 3개 강제는 FinalizeUploadUseCase에서 처리
+        // FILE: DB 용량은 항상 보호, 초과분은 FILE 오래된 순 삭제
+        // DB: 최대 3개 강제는 FinalizeUploadUseCase에서 처리 (항상 업로드 허용)
         if (command.type() == BackupType.FILE) {
-            checkAndEvictFileQuota(command.hospitalId(), command.totalSize(), now);
+            checkAndEvictForFileUpload(command.hospitalId(), command.totalSize(), now);
         }
 
         UploadSession session = new UploadSession(
@@ -101,17 +101,33 @@ public class InitiateUploadUseCase {
         return session.id();
     }
 
-    private void checkAndEvictFileQuota(HospitalId hospitalId, long totalSize, Instant now) throws IOException {
+    private void checkAndEvictForFileUpload(HospitalId hospitalId, long newFileSize, Instant now) throws IOException {
         HospitalQuota quota = quotaRepository.findByHospitalId(hospitalId).orElse(null);
-        if (quota == null || quota.canAccommodate(totalSize)) {
+        if (quota == null) {
             return;
         }
 
-        long needed = totalSize - quota.remainingBytes();
-        List<BackupArtifact> candidates = artifactRepository.findByHospitalIdAndType(hospitalId, BackupType.FILE);
+        // DB artifacts는 항상 보호 — 먼저 예약 공간으로 확보
+        List<BackupArtifact> dbArtifacts = artifactRepository.findByHospitalIdAndType(hospitalId, BackupType.DB);
+        long dbReserved = dbArtifacts.stream().mapToLong(BackupArtifact::sizeBytes).sum();
 
+        long fileLimit = quota.limitBytes() - dbReserved;
+        if (fileLimit <= 0) {
+            // DB 파일만으로도 한도 초과 — FILE 업로드 불가
+            throw new QuotaExceededException(hospitalId, quota.usedBytes(), quota.limitBytes());
+        }
+
+        List<BackupArtifact> fileArtifacts = artifactRepository.findByHospitalIdAndType(hospitalId, BackupType.FILE);
+        long currentFileUsed = fileArtifacts.stream().mapToLong(BackupArtifact::sizeBytes).sum();
+
+        if (currentFileUsed + newFileSize <= fileLimit) {
+            return;
+        }
+
+        // 공간 확보를 위해 오래된 FILE artifact부터 삭제
+        long needed = (currentFileUsed + newFileSize) - fileLimit;
         long freed = 0L;
-        for (BackupArtifact artifact : candidates) {
+        for (BackupArtifact artifact : fileArtifacts) { // oldest-first
             if (freed >= needed) break;
             storagePort.moveToTrash(Path.of(artifact.storagePath()));
             quotaRepository.subtractUsage(hospitalId, artifact.sizeBytes());
@@ -128,9 +144,8 @@ public class InitiateUploadUseCase {
             ));
         }
 
-        HospitalQuota updated = quotaRepository.findByHospitalId(hospitalId).orElse(quota);
-        if (!updated.canAccommodate(totalSize)) {
-            throw new QuotaExceededException(hospitalId, updated.usedBytes(), updated.limitBytes());
+        if (currentFileUsed - freed + newFileSize > fileLimit) {
+            throw new QuotaExceededException(hospitalId, quota.usedBytes(), quota.limitBytes());
         }
     }
 }
