@@ -6,9 +6,13 @@ import com.intocns.backup.domain.port.BackupStoragePort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
@@ -20,6 +24,8 @@ import java.util.HexFormat;
 
 @Component
 public class LocalFileSystemStorageAdapter implements BackupStoragePort {
+
+    private static final Logger log = LoggerFactory.getLogger(LocalFileSystemStorageAdapter.class);
 
     private final Path artifactsRoot;
     private final Path trashRoot;
@@ -57,7 +63,12 @@ public class LocalFileSystemStorageAdapter implements BackupStoragePort {
                 .resolve(artifactPath.getFileName());
 
         Files.createDirectories(trashTarget.getParent());
-        Files.move(artifactPath, trashTarget, StandardCopyOption.ATOMIC_MOVE);
+        try {
+            Files.move(artifactPath, trashTarget, StandardCopyOption.ATOMIC_MOVE);
+        } catch (NoSuchFileException e) {
+            // 파일이 이미 없는 경우 — DB 정리(markPurged, subtractUsage)는 계속 진행
+            log.warn("moveToTrash skipped, file not found: {}", artifactPath);
+        }
     }
 
     @Override
