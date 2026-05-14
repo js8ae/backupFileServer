@@ -91,6 +91,19 @@ public class JdbcQuotaRepository implements QuotaRepository {
                 .update();
     }
 
+    @Override
+    public void resetUsage(HospitalId hospitalId) {
+        jdbc.sql("""
+                UPDATE hospital_quota
+                SET used_bytes         = 0,
+                    last_calculated_at = :now
+                WHERE cocode = :cocode
+                """)
+                .param("now", Timestamp.from(Instant.now()))
+                .param("cocode", hospitalId.cocode())
+                .update();
+    }
+
     private HospitalQuota mapRow(ResultSet rs, int rowNum) throws SQLException {
         return new HospitalQuota(
                 new HospitalId(rs.getLong("cocode")),

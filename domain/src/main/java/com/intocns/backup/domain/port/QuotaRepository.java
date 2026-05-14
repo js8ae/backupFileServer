@@ -13,4 +13,5 @@ public interface QuotaRepository {
     void updateLimit(HospitalId hospitalId, long limitBytes);
     void addUsage(HospitalId hospitalId, long bytes);
     void subtractUsage(HospitalId hospitalId, long bytes);
+    void resetUsage(HospitalId hospitalId);
 }

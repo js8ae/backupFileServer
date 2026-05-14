@@ -2,6 +2,7 @@ package com.intocns.backup.api.admin;
 
 import com.intocns.backup.api.admin.dto.*;
 import com.intocns.backup.application.RegisterHospitalUseCase;
+import com.intocns.backup.application.ResetHospitalDataUseCase;
 import com.intocns.backup.application.UpdateHospitalUseCase;
 import com.intocns.backup.domain.exception.HospitalNotFoundException;
 import com.intocns.backup.domain.model.Hospital;
@@ -30,6 +31,7 @@ public class AdminHospitalController {
 
     private final RegisterHospitalUseCase registerHospital;
     private final UpdateHospitalUseCase updateHospital;
+    private final ResetHospitalDataUseCase resetHospitalData;
     private final HospitalRepository hospitalRepository;
     private final QuotaRepository quotaRepository;
     private final UploadSessionRepository sessionRepository;
@@ -37,12 +39,14 @@ public class AdminHospitalController {
 
     public AdminHospitalController(RegisterHospitalUseCase registerHospital,
                                    UpdateHospitalUseCase updateHospital,
+                                   ResetHospitalDataUseCase resetHospitalData,
                                    HospitalRepository hospitalRepository,
                                    QuotaRepository quotaRepository,
                                    UploadSessionRepository sessionRepository,
                                    ArtifactRepository artifactRepository) {
         this.registerHospital = registerHospital;
         this.updateHospital = updateHospital;
+        this.resetHospitalData = resetHospitalData;
         this.hospitalRepository = hospitalRepository;
         this.quotaRepository = quotaRepository;
         this.sessionRepository = sessionRepository;
@@ -132,5 +136,14 @@ public class AdminHospitalController {
         return artifactRepository.findByHospitalId(new HospitalId(cocode)).stream()
                 .map(ArtifactSummary::from)
                 .toList();
+    }
+
+    @Operation(summary = "백업 데이터 초기화",
+               description = "해당 병원의 모든 백업 파일을 trash로 이동하고 쿼터를 초기화합니다. 진행 중인 업로드 세션도 함께 중단됩니다.")
+    @ApiResponse(responseCode = "200", description = "초기화 성공")
+    @DeleteMapping("/{cocode}/data")
+    public ResetDataResponse resetData(
+            @Parameter(description = "병원 코드") @PathVariable long cocode) {
+        return ResetDataResponse.from(resetHospitalData.reset(new HospitalId(cocode)));
     }
 }
