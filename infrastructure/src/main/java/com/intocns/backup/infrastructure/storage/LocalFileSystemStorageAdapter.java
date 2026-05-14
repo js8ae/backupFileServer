@@ -20,7 +20,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
+import java.time.DateTimeException;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
@@ -62,9 +62,8 @@ public class LocalFileSystemStorageAdapter implements BackupStoragePort {
 
     @Override
     public void moveToTrash(Path artifactPath) throws IOException {
-        Path trashTarget = trashRoot
-                .resolve(LocalDate.now(ZoneOffset.UTC).toString())
-                .resolve(artifactPath.getFileName());
+        Path relative = artifactsRoot.relativize(artifactPath);
+        Path trashTarget = trashRoot.resolve(relative);
 
         Files.createDirectories(trashTarget.getParent());
         try {
@@ -93,26 +92,58 @@ public class LocalFileSystemStorageAdapter implements BackupStoragePort {
         if (!Files.exists(trashRoot)) {
             return 0;
         }
+
+        // trash 구조: {hospitalId}/{type}/{yyyy}/{MM}/{dd}/{file}
+        // depth=5 디렉토리(dd 레벨)를 순회해 날짜 비교 후 삭제
+        List<Path> dayDirs;
+        try (Stream<Path> walk = Files.walk(trashRoot, 5)) {
+            dayDirs = walk
+                    .filter(p -> Files.isDirectory(p) && trashRoot.relativize(p).getNameCount() == 5)
+                    .toList();
+        }
+
         int deleted = 0;
-        try (Stream<Path> dirs = Files.list(trashRoot)) {
-            for (Path dir : dirs.toList()) {
-                if (!Files.isDirectory(dir)) {
-                    continue;
-                }
-                LocalDate dirDate;
-                try {
-                    dirDate = LocalDate.parse(dir.getFileName().toString());
-                } catch (DateTimeParseException e) {
-                    log.warn("purgeTrash skipped unexpected dir: {}", dir.getFileName());
-                    continue;
-                }
-                if (!dirDate.isAfter(cutoff)) {
-                    deleteDirectory(dir);
-                    deleted++;
-                }
+        for (Path dayDir : dayDirs) {
+            Path rel = trashRoot.relativize(dayDir); // {hospitalId}/{type}/{yyyy}/{MM}/{dd}
+            LocalDate dirDate;
+            try {
+                dirDate = LocalDate.of(
+                        Integer.parseInt(rel.getName(2).toString()),
+                        Integer.parseInt(rel.getName(3).toString()),
+                        Integer.parseInt(rel.getName(4).toString())
+                );
+            } catch (NumberFormatException | DateTimeException e) {
+                log.warn("purgeTrash skipped unexpected dir: {}", dayDir);
+                continue;
+            }
+            if (!dirDate.isAfter(cutoff)) {
+                deleteDirectory(dayDir);
+                deleted++;
             }
         }
+
+        pruneEmptyDirs();
         return deleted;
+    }
+
+    private void pruneEmptyDirs() {
+        try (Stream<Path> walk = Files.walk(trashRoot)) {
+            walk.filter(p -> !p.equals(trashRoot) && Files.isDirectory(p))
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(this::deleteIfEmpty);
+        } catch (IOException e) {
+            log.warn("purgeTrash pruneEmptyDirs failed: {}", e.getMessage());
+        }
+    }
+
+    private void deleteIfEmpty(Path dir) {
+        try (Stream<Path> children = Files.list(dir)) {
+            if (children.findAny().isEmpty()) {
+                Files.delete(dir);
+            }
+        } catch (IOException e) {
+            log.warn("purgeTrash deleteIfEmpty failed: {}", dir);
+        }
     }
 
     private void deleteDirectory(Path dir) {
