@@ -19,6 +19,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -53,7 +57,7 @@ public class AdminHospitalController {
         this.artifactRepository = artifactRepository;
     }
 
-    @Operation(summary = "병원 등록")
+    @Operation(summary = "병원 단건 등록")
     @ApiResponse(responseCode = "201", description = "등록 성공")
     @ApiResponse(responseCode = "409", description = "이미 등록된 병원 (code: 1000)")
     @PostMapping
@@ -67,6 +71,32 @@ public class AdminHospitalController {
                 request.maxStorageBytes()
         ));
         return HospitalResponse.from(hospital);
+    }
+
+    @Operation(summary = "병원 일괄 등록",
+               description = "여러 병원을 한 번에 등록합니다. 항목별로 독립 처리되며, 일부 실패해도 나머지는 등록됩니다.")
+    @ApiResponse(responseCode = "200", description = "처리 완료 (succeeded/failed 목록 포함)")
+    @PostMapping("/bulk")
+    public BulkRegisterResponse bulkRegister(@Valid @RequestBody List<RegisterHospitalRequest> requests) {
+        List<HospitalResponse> succeeded = new ArrayList<>();
+        List<BulkRegisterResponse.FailedItem> failed = new ArrayList<>();
+
+        for (RegisterHospitalRequest request : requests) {
+            try {
+                Hospital hospital = registerHospital.register(new RegisterHospitalUseCase.Command(
+                        request.cocode(),
+                        request.name(),
+                        request.licenseStartAt(),
+                        request.licenseEndAt(),
+                        request.maxStorageBytes()
+                ));
+                succeeded.add(HospitalResponse.from(hospital));
+            } catch (Exception e) {
+                failed.add(new BulkRegisterResponse.FailedItem(request.cocode(), e.getMessage()));
+            }
+        }
+
+        return new BulkRegisterResponse(succeeded, failed);
     }
 
     @Operation(summary = "병원 목록 조회")
