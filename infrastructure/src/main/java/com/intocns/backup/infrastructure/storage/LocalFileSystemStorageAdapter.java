@@ -75,6 +75,17 @@ public class LocalFileSystemStorageAdapter implements BackupStoragePort {
     }
 
     @Override
+    public void restoreFromTrash(Path artifactPath) throws IOException {
+        Path relative = artifactsRoot.relativize(artifactPath);
+        Path trashPath = trashRoot.resolve(relative);
+        if (!Files.exists(trashPath)) {
+            throw new NoSuchFileException(trashPath.toString());
+        }
+        Files.createDirectories(artifactPath.getParent());
+        Files.move(trashPath, artifactPath, StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    @Override
     public String sha256(Path path) throws IOException {
         MessageDigest digest = newSha256Digest();
         try (InputStream is = Files.newInputStream(path)) {

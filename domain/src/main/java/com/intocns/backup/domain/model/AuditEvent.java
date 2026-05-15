@@ -6,5 +6,6 @@ public enum AuditEvent {
     UPLOAD_ABORTED,
     UPLOAD_EXPIRED,
     ARTIFACT_EVICTED,
+    ARTIFACT_RESTORED,
     HOSPITAL_RESET,
 }

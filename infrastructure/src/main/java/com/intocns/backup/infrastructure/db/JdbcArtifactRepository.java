@@ -114,6 +114,15 @@ public class JdbcArtifactRepository implements ArtifactRepository {
         return updated > 0;
     }
 
+    @Override
+    public boolean clearPurged(UUID id) {
+        int updated = jdbc.sql(
+                "UPDATE backup_artifact SET purged_at = NULL WHERE id = :id AND purged_at IS NOT NULL")
+                .param("id", id.toString())
+                .update();
+        return updated > 0;
+    }
+
     private BackupArtifact mapRow(ResultSet rs, int rowNum) throws SQLException {
         Timestamp expiresAt = rs.getTimestamp("expires_at", UTC);
         Timestamp purgedAt  = rs.getTimestamp("purged_at", UTC);

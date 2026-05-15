@@ -14,6 +14,10 @@ public enum ErrorCode {
     VALIDATION_FAILED(1008, "Request validation failed"),
     INVALID_ARGUMENT(1009, "Invalid argument"),
 
+    ARTIFACT_NOT_FOUND(1011, "Artifact not found"),
+    ARTIFACT_NOT_PURGED(1012, "Artifact is not in trash"),
+    JOB_NOT_FOUND(1013, "Job not found"),
+
     // 5xx — 서버 오류
     INTERNAL_ERROR(1010, "An unexpected error occurred");
 

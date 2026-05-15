@@ -1,5 +1,7 @@
 package com.intocns.backup.api.error;
 
+import com.intocns.backup.domain.exception.ArtifactNotFoundException;
+import com.intocns.backup.domain.exception.ArtifactNotPurgedException;
 import com.intocns.backup.domain.exception.CredentialNotFoundException;
 import com.intocns.backup.domain.exception.HospitalAlreadyExistsException;
 import com.intocns.backup.domain.exception.HospitalNotFoundException;
@@ -22,6 +24,18 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(ArtifactNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleArtifactNotFound(ArtifactNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(ErrorCode.ARTIFACT_NOT_FOUND, e.getMessage()));
+    }
+
+    @ExceptionHandler(ArtifactNotPurgedException.class)
+    public ResponseEntity<ErrorResponse> handleArtifactNotPurged(ArtifactNotPurgedException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(ErrorCode.ARTIFACT_NOT_PURGED, e.getMessage()));
+    }
 
     @ExceptionHandler(HospitalAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleHospitalAlreadyExists(HospitalAlreadyExistsException e) {

@@ -19,4 +19,6 @@ public interface ArtifactRepository {
     List<BackupArtifact> findExpiredNotPurgedBefore(Instant threshold);
     /** @return true if actually marked (first time), false if already purged by another transaction */
     boolean markPurged(UUID id, Instant purgedAt);
+    /** purged_at을 NULL로 복구. @return true if actually cleared */
+    boolean clearPurged(UUID id);
 }
