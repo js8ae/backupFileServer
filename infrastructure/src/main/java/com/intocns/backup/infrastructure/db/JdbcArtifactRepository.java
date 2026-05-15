@@ -4,6 +4,7 @@ import com.intocns.backup.domain.model.BackupArtifact;
 import com.intocns.backup.domain.model.BackupType;
 import com.intocns.backup.domain.model.HospitalId;
 import com.intocns.backup.domain.port.ArtifactRepository;
+import com.intocns.backup.domain.port.ArtifactRepository.LatestArtifactStat;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -112,6 +113,22 @@ public class JdbcArtifactRepository implements ArtifactRepository {
                 .param("id", id.toString())
                 .update();
         return updated > 0;
+    }
+
+    @Override
+    public List<LatestArtifactStat> findLatestStatPerHospitalAndType() {
+        return jdbc.sql("""
+                SELECT cocode, type, MAX(created_at) AS latest_at
+                FROM backup_artifact
+                WHERE purged_at IS NULL
+                GROUP BY cocode, type
+                """)
+                .query((rs, rowNum) -> new LatestArtifactStat(
+                        new HospitalId(rs.getLong("cocode")),
+                        BackupType.valueOf(rs.getString("type")),
+                        rs.getTimestamp("latest_at", UTC).toInstant()
+                ))
+                .list();
     }
 
     @Override

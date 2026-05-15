@@ -17,8 +17,12 @@ public interface ArtifactRepository {
     /** 해당 병원·타입의 비삭제 artifact를 오래된 순(ASC)으로 반환 */
     List<BackupArtifact> findByHospitalIdAndType(HospitalId hospitalId, BackupType type);
     List<BackupArtifact> findExpiredNotPurgedBefore(Instant threshold);
+    /** 병원·타입별 최신 비삭제 artifact 생성 시각. 단일 GROUP BY 쿼리로 전체 조회. */
+    List<LatestArtifactStat> findLatestStatPerHospitalAndType();
     /** @return true if actually marked (first time), false if already purged by another transaction */
     boolean markPurged(UUID id, Instant purgedAt);
     /** purged_at을 NULL로 복구. @return true if actually cleared */
     boolean clearPurged(UUID id);
+
+    record LatestArtifactStat(HospitalId hospitalId, BackupType type, Instant latestCreatedAt) {}
 }

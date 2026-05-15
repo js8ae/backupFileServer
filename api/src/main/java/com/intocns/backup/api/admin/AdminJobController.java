@@ -2,7 +2,12 @@ package com.intocns.backup.api.admin;
 
 import com.intocns.backup.api.error.ErrorCode;
 import com.intocns.backup.api.error.ErrorResponse;
-import com.intocns.backup.application.job.*;
+import com.intocns.backup.application.job.ExpiredSessionCleanupJob;
+import com.intocns.backup.application.job.IntegrityVerificationJob;
+import com.intocns.backup.application.job.MissingBackupDetectionJob;
+import com.intocns.backup.application.job.QuotaRebalanceJob;
+import com.intocns.backup.application.job.RetentionPolicyJob;
+import com.intocns.backup.application.job.TrashCleanupJob;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,7 +34,8 @@ public class AdminJobController {
             RetentionPolicyJob retentionPolicyJob,
             QuotaRebalanceJob quotaRebalanceJob,
             IntegrityVerificationJob integrityVerificationJob,
-            TrashCleanupJob trashCleanupJob) {
+            TrashCleanupJob trashCleanupJob,
+            MissingBackupDetectionJob missingBackupDetectionJob) {
 
         jobs = new LinkedHashMap<>();
         jobs.put("ExpiredSessionCleanupJob", expiredSessionCleanupJob::run);
@@ -37,6 +43,7 @@ public class AdminJobController {
         jobs.put("QuotaRebalanceJob", quotaRebalanceJob::run);
         jobs.put("IntegrityVerificationJob", integrityVerificationJob::run);
         jobs.put("TrashCleanupJob", trashCleanupJob::run);
+        jobs.put("MissingBackupDetectionJob", missingBackupDetectionJob::run);
     }
 
     @Operation(

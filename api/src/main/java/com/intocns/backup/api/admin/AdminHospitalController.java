@@ -1,6 +1,7 @@
 package com.intocns.backup.api.admin;
 
 import com.intocns.backup.api.admin.dto.*;
+import com.intocns.backup.application.DetectMissingBackupsUseCase;
 import com.intocns.backup.application.RegisterHospitalUseCase;
 import com.intocns.backup.application.ResetHospitalDataUseCase;
 import com.intocns.backup.application.UpdateHospitalUseCase;
@@ -34,6 +35,7 @@ public class AdminHospitalController {
     private final RegisterHospitalUseCase registerHospital;
     private final UpdateHospitalUseCase updateHospital;
     private final ResetHospitalDataUseCase resetHospitalData;
+    private final DetectMissingBackupsUseCase detectMissingBackups;
     private final HospitalRepository hospitalRepository;
     private final QuotaRepository quotaRepository;
     private final UploadSessionRepository sessionRepository;
@@ -42,6 +44,7 @@ public class AdminHospitalController {
     public AdminHospitalController(RegisterHospitalUseCase registerHospital,
                                    UpdateHospitalUseCase updateHospital,
                                    ResetHospitalDataUseCase resetHospitalData,
+                                   DetectMissingBackupsUseCase detectMissingBackups,
                                    HospitalRepository hospitalRepository,
                                    QuotaRepository quotaRepository,
                                    UploadSessionRepository sessionRepository,
@@ -49,6 +52,7 @@ public class AdminHospitalController {
         this.registerHospital = registerHospital;
         this.updateHospital = updateHospital;
         this.resetHospitalData = resetHospitalData;
+        this.detectMissingBackups = detectMissingBackups;
         this.hospitalRepository = hospitalRepository;
         this.quotaRepository = quotaRepository;
         this.sessionRepository = sessionRepository;
@@ -163,6 +167,26 @@ public class AdminHospitalController {
             @Parameter(description = "병원 코드") @PathVariable long cocode) {
         return artifactRepository.findByHospitalId(new HospitalId(cocode)).stream()
                 .map(ArtifactSummary::from)
+                .toList();
+    }
+
+    @Operation(
+        summary = "백업 누락 병원 목록",
+        description = """
+            설정된 임계 시간 이상 백업이 없는 활성 병원 목록을 반환합니다.
+            임계값은 backup.monitoring.db-missing-hours / file-missing-hours 설정에 따릅니다.
+            0으로 설정된 타입은 감지에서 제외됩니다.
+            """
+    )
+    @GetMapping("/missing-backups")
+    public List<MissingBackupResponse> missingBackups(
+            @Parameter(description = "타입 필터: DB | FILE (생략 시 전체)")
+            @RequestParam(required = false) String type) {
+        return detectMissingBackups.detect().stream()
+                .filter(info -> type == null
+                        || (type.equalsIgnoreCase("DB") && info.dbMissing())
+                        || (type.equalsIgnoreCase("FILE") && info.fileMissing()))
+                .map(MissingBackupResponse::from)
                 .toList();
     }
 
