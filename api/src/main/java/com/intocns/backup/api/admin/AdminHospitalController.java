@@ -25,8 +25,6 @@ import java.util.List;
 
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-
 @Tag(name = "Admin - Hospital", description = "병원 관리 (X-Admin-Key 필요)")
 @SecurityRequirement(name = "adminKey")
 @RestController
@@ -166,6 +164,23 @@ public class AdminHospitalController {
         return artifactRepository.findByHospitalId(new HospitalId(cocode)).stream()
                 .map(ArtifactSummary::from)
                 .toList();
+    }
+
+    @Operation(
+        summary = "병원 백업 현황 요약",
+        description = "병원 정보, 쿼터, DB/FILE 아티팩트 통계, 진행 중 세션 수, trash 대기 건수를 한 번에 반환합니다."
+    )
+    @ApiResponse(responseCode = "404", description = "병원 없음 (code: 1001)")
+    @GetMapping("/{cocode}/summary")
+    public HospitalBackupSummary summary(
+            @Parameter(description = "병원 코드") @PathVariable long cocode) {
+        HospitalId hospitalId = new HospitalId(cocode);
+        Hospital hospital = hospitalRepository.findById(hospitalId)
+                .orElseThrow(() -> new HospitalNotFoundException(hospitalId));
+        var quota = quotaRepository.findByHospitalId(hospitalId).orElse(null);
+        var artifacts = artifactRepository.findByHospitalId(hospitalId);
+        var sessions = sessionRepository.findByHospitalId(hospitalId);
+        return HospitalBackupSummary.of(hospital, quota, artifacts, sessions);
     }
 
     @Operation(summary = "백업 데이터 초기화",
