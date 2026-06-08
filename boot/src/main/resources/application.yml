@@ -19,6 +19,8 @@ server:
       enabled: false
 
 backup:
+  logging:
+    root: /data/logs/backup-server
   tus:
     max-upload-size: 53687091200   # 50GB
   session:

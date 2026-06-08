@@ -9,15 +9,11 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
-import java.util.TimeZone;
 
 @Repository
 public class JdbcHospitalCredentialRepository implements HospitalCredentialRepository {
-
-    private static final Calendar UTC = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 
     private final JdbcClient jdbcClient;
 
@@ -68,7 +64,7 @@ public class JdbcHospitalCredentialRepository implements HospitalCredentialRepos
                 .param("cocode", hospitalId.cocode())
                 .query((rs, rowNum) -> new CredentialInfo(
                         rs.getString("client_id"),
-                        rs.getTimestamp("created_at", UTC).toInstant()
+                        rs.getTimestamp("created_at").toInstant()
                 ))
                 .list();
     }

@@ -35,7 +35,7 @@ LimitNOFILE=65536
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
-ReadWritePaths=/var/backup /opt/backup-server
+ReadWritePaths=/var/backup /opt/backup-server /data/logs/backup-server
 
 [Install]
 WantedBy=multi-user.target

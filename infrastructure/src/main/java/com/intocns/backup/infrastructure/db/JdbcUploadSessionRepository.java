@@ -12,16 +12,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
-import java.util.TimeZone;
 import java.util.UUID;
 
 @Repository
 public class JdbcUploadSessionRepository implements UploadSessionRepository {
-
-    private static final Calendar UTC = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 
     private final JdbcClient jdbc;
 
@@ -133,8 +129,8 @@ public class JdbcUploadSessionRepository implements UploadSessionRepository {
                 rs.getString("expected_sha256"),
                 rs.getString("tus_upload_uri"),
                 UploadStatus.valueOf(rs.getString("status")),
-                rs.getTimestamp("expires_at", UTC).toInstant(),
-                rs.getTimestamp("created_at", UTC).toInstant()
+                rs.getTimestamp("expires_at").toInstant(),
+                rs.getTimestamp("created_at").toInstant()
         );
     }
 }

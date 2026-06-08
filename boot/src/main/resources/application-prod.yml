@@ -7,6 +7,8 @@ spring:
       maximum-pool-size: 30
 
 backup:
+  logging:
+    root: ${BACKUP_LOG_ROOT:/data/logs/backup-server}
   storage:
     incoming-root: ${BACKUP_INCOMING_ROOT}
     artifacts-root: ${BACKUP_ARTIFACTS_ROOT}

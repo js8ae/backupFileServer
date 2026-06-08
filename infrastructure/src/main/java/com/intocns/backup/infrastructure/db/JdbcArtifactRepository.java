@@ -12,16 +12,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
-import java.util.TimeZone;
 import java.util.UUID;
 
 @Repository
 public class JdbcArtifactRepository implements ArtifactRepository {
-
-    private static final Calendar UTC = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
 
     private final JdbcClient jdbc;
 
@@ -126,7 +122,7 @@ public class JdbcArtifactRepository implements ArtifactRepository {
                 .query((rs, rowNum) -> new LatestArtifactStat(
                         new HospitalId(rs.getLong("cocode")),
                         BackupType.valueOf(rs.getString("type")),
-                        rs.getTimestamp("latest_at", UTC).toInstant()
+                        rs.getTimestamp("latest_at").toInstant()
                 ))
                 .list();
     }
@@ -141,8 +137,8 @@ public class JdbcArtifactRepository implements ArtifactRepository {
     }
 
     private BackupArtifact mapRow(ResultSet rs, int rowNum) throws SQLException {
-        Timestamp expiresAt = rs.getTimestamp("expires_at", UTC);
-        Timestamp purgedAt  = rs.getTimestamp("purged_at", UTC);
+        Timestamp expiresAt = rs.getTimestamp("expires_at");
+        Timestamp purgedAt  = rs.getTimestamp("purged_at");
         return new BackupArtifact(
                 UUID.fromString(rs.getString("id")),
                 new HospitalId(rs.getLong("cocode")),
@@ -151,7 +147,7 @@ public class JdbcArtifactRepository implements ArtifactRepository {
                 rs.getString("original_filename"),
                 rs.getLong("size_bytes"),
                 rs.getString("sha256"),
-                rs.getTimestamp("created_at", UTC).toInstant(),
+                rs.getTimestamp("created_at").toInstant(),
                 expiresAt != null ? expiresAt.toInstant() : null,
                 purgedAt  != null ? purgedAt.toInstant()  : null
         );
