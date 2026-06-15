@@ -1,7 +1,7 @@
 CREATE TABLE client_upload_error_log (
     id            CHAR(36)      NOT NULL,
-    session_id    CHAR(36)      NOT NULL,
-    cocode        BIGINT        NOT NULL,
+    session_id    CHAR(36)      NULL,
+    cocode        BIGINT        NULL,
     error_type    VARCHAR(64)   NOT NULL,
     error_message VARCHAR(1000) NULL,
     byte_offset   BIGINT        NULL,

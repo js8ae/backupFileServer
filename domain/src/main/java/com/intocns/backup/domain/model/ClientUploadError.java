@@ -6,8 +6,8 @@ import java.util.UUID;
 
 public record ClientUploadError(
         UUID id,
-        UUID sessionId,
-        HospitalId hospitalId,
+        UUID sessionId,          // nullable
+        HospitalId hospitalId,   // nullable
         String errorType,
         String errorMessage,
         Long byteOffset,

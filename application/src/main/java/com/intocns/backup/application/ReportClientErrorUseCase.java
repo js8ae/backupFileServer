@@ -1,8 +1,7 @@
 package com.intocns.backup.application;
 
-import com.intocns.backup.domain.exception.SessionNotFoundException;
 import com.intocns.backup.domain.model.ClientUploadError;
-import com.intocns.backup.domain.model.UploadSession;
+import com.intocns.backup.domain.model.HospitalId;
 import com.intocns.backup.domain.port.ClientUploadErrorLogPort;
 import com.intocns.backup.domain.port.UploadSessionRepository;
 import org.springframework.stereotype.Service;
@@ -24,18 +23,18 @@ public class ReportClientErrorUseCase {
     }
 
     public void report(UUID sessionId,
+                       HospitalId hospitalIdFromJwt,
                        String errorType,
                        String errorMessage,
                        Long byteOffset,
                        Map<String, String> clientInfo,
                        Instant occurredAt) {
-        UploadSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+        HospitalId resolvedHospitalId = resolveHospitalId(hospitalIdFromJwt, sessionId);
 
         ClientUploadError error = new ClientUploadError(
                 UUID.randomUUID(),
                 sessionId,
-                session.hospitalId(),
+                resolvedHospitalId,
                 errorType,
                 errorMessage,
                 byteOffset,
@@ -45,5 +44,17 @@ public class ReportClientErrorUseCase {
         );
 
         errorLogPort.record(error);
+    }
+
+    private HospitalId resolveHospitalId(HospitalId hospitalIdFromJwt, UUID sessionId) {
+        if (hospitalIdFromJwt != null) {
+            return hospitalIdFromJwt;
+        }
+        if (sessionId != null) {
+            return sessionRepository.findById(sessionId)
+                    .map(s -> s.hospitalId())
+                    .orElse(null);
+        }
+        return null;
     }
 }
