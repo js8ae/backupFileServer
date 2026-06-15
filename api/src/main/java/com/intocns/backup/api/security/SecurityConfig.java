@@ -36,6 +36,7 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/token").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/upload/sessions/*/errors").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/files/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/prometheus", "/actuator/flyway").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
