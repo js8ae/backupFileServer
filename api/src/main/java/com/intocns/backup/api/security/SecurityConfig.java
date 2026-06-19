@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/token").permitAll()
                         .requestMatchers(HttpMethod.POST, "/upload/errors").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/hospitals/*/status").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/files/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/prometheus", "/actuator/flyway").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
