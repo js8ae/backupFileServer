@@ -11,6 +11,7 @@ import java.util.UUID;
 
 public record ReportClientErrorRequest(
         UUID sessionId,
+        String uploadUri,
         @NotBlank String errorType,
         String errorMessage,
         Long byteOffset,

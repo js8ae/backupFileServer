@@ -30,7 +30,9 @@ public class UploadErrorController {
 
     @Operation(summary = "클라이언트 업로드 에러 리포팅",
                description = "업로드 중 발생한 클라이언트 측 에러를 기록합니다. " +
-                             "JWT와 sessionId 모두 선택 사항이며, 있는 데이터만 기록합니다.")
+                             "JWT·sessionId·uploadUri 모두 선택 사항이며, 있는 데이터만 기록합니다. " +
+                             "uploadUri(TUS URI, 예: /files/{tusId})를 보내면 만료된 JWT 없이도 " +
+                             "세션을 복원해 session_id·cocode 를 채웁니다.")
     @PostMapping("/errors")
     @ResponseStatus(HttpStatus.CREATED)
     public void reportError(
@@ -39,6 +41,7 @@ public class UploadErrorController {
         HospitalId hospitalId = extractHospitalId(authHeader);
         reportClientError.report(
                 request.sessionId(),
+                request.uploadUri(),
                 hospitalId,
                 request.errorType(),
                 request.errorMessage(),
